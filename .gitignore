@@ -64,6 +64,7 @@ next-env.d.ts
 
 # claude code worktree state
 .claude/worktrees/
+.claire/
 
 # editors
 .vscode/
