@@ -8,9 +8,9 @@
 
 ## General status
 
-- **Phase:** definition
-- **Last update:** 2026-06-28 by /init-project
-- **Main builds:** —
+- **Phase:** development
+- **Last update:** 2026-06-28 by /next-wave
+- **Main builds:** ✅ (Next.js 16.2.9, 2026-06-28)
 - **Tests on main:** —
 
 ---
@@ -19,7 +19,7 @@
 
 | ID | Module | Wave | Type | Depends on | Status |
 |---|---|---|---|---|---|
-| M00 | DB Schema & Migrations | 1 | parallel | — | ⏳ pending |
+| M00 | DB Schema & Migrations | 1 | parallel | — | 🔄 in progress |
 | M01 | Auth & Session | 2 | sequential | M00 | ⏳ pending |
 | M02 | App Shell, Navigation & PWA | 2 | sequential | M00 | ⏳ pending |
 | M03 | Account Management | 3 | sequential | M01, M02 | ⏳ pending |
@@ -38,10 +38,10 @@
 ---
 
 ### M00 — DB Schema & Migrations
-- **Status:** ⏳ pending
+- **Status:** 🔄 in progress
 - **Type:** parallel (wave 1 — no dependencies)
 - **Depends on:** —
-- **Worktree:** —
+- **Worktree:** wt-m00-schema
 - **db:** ⏳ Generate all SQL migration files (schema, RLS, indexes)
 - **Tests:** —
 - **Migrations:** ⏳ `20260628000001_initial_schema.sql` (all tables + RLS + indexes in one file)
