@@ -69,3 +69,5 @@ This detects the merge, updates PLAN.md, and prints the next wave of worktrees.
 3. **`useRouter`/`useSearchParams` in Server Components** — App Router: hooks are client-only. Use `params`/`searchParams` props in Server Components instead.
 4. **Zustand stores in Server Components** — Zustand is client-side state. Only use inside `'use client'` components. Never initialize store state on the server.
 5. **Computing "Disponible" per-row on the client** — rollover is recursive across months. Compute server-side (Route Handler) to avoid N+1 round-trips to Supabase.
+6. **`middleware.ts` is deprecated in Next.js 16** — use `src/proxy.ts` with `export async function proxy()`. Never create `middleware.ts`; the build warns and fails.
+7. **`npm install` after adding deps** — always run `npm install` before committing when you add packages to `package.json`. Omitting it breaks the build for every downstream worktree that pulls main.
