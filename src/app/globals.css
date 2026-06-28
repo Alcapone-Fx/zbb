@@ -1,26 +1,158 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Class-based dark mode — add/remove .dark on <html> */
+@custom-variant dark (&:is(.dark, .dark *));
+
+/* ─── Accent themes (set via data-accent on <html>) ─────────────────────── */
+
+:root,
+[data-accent="azul"] {
+  --ac: #4F6EF7;
+  --ab: rgba(79, 110, 247, 0.12);
+  --aB: rgba(79, 110, 247, 0.25);
+  --a-shadow: rgba(79, 110, 247, 0.38);
 }
+
+[data-accent="violeta"] {
+  --ac: #8B5CF6;
+  --ab: rgba(139, 92, 246, 0.12);
+  --aB: rgba(139, 92, 246, 0.25);
+  --a-shadow: rgba(139, 92, 246, 0.38);
+}
+
+[data-accent="esmeralda"] {
+  --ac: #10B981;
+  --ab: rgba(16, 185, 129, 0.12);
+  --aB: rgba(16, 185, 129, 0.25);
+  --a-shadow: rgba(16, 185, 129, 0.38);
+}
+
+/* ─── Dark theme tokens ──────────────────────────────────────────────────── */
+/* Applied when <html class="dark"> */
+
+.dark {
+  --bg-app: #0B1422;
+  --bg-surface: #111D32;
+  --bg-elevated: #172B48;
+
+  --text-main: #E0EDFF;
+  --text-sub: #6C8DB0;
+  --text-dim: #335070;
+  --text-muted: #2E4D6E;
+  --text-ghost: #2A4060;
+
+  --border-card: rgba(255, 255, 255, 0.09);
+  --border-row: rgba(255, 255, 255, 0.05);
+  --border-section: rgba(255, 255, 255, 0.06);
+}
+
+/* ─── Light theme tokens ─────────────────────────────────────────────────── */
+/* Applied when <html> does NOT have .dark class */
+
+:root:not(.dark) {
+  --bg-app: #ffffff;
+  --bg-surface: #f8fafc;
+  --bg-elevated: #e2e8f0;
+
+  --text-main: #0f172a;
+  --text-sub: #475569;
+  --text-dim: #94a3b8;
+  --text-muted: #cbd5e1;
+  --text-ghost: #e2e8f0;
+
+  --border-card: rgba(0, 0, 0, 0.08);
+  --border-row: rgba(0, 0, 0, 0.04);
+  --border-section: rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Tailwind design tokens ─────────────────────────────────────────────── */
+/* inline = values resolve at computed-style time (CSS vars can change) */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-accent:       var(--ac);
+  --color-accent-muted: var(--ab);
+
+  --color-bg-app:      var(--bg-app);
+  --color-bg-surface:  var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+
+  --color-text-main:  var(--text-main);
+  --color-text-sub:   var(--text-sub);
+  --color-text-dim:   var(--text-dim);
+
+  --color-positive:   #34D399;
+  --color-warning:    #FBBF24;
+  --color-negative:   #F87171;
+  --color-accent-alt: #A78BFA;
+
+  --font-sans: var(--font-plus-jakarta), sans-serif;
+
+  --radius-app:    52px;
+  --radius-sheet:  24px;
+  --radius-card:   16px;
+  --radius-input:  14px;
+  --radius-button: 14px;
+  --radius-fab:    18px;
+  --radius-tag:    20px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Global base styles ─────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-plus-jakarta, sans-serif);
+  /* Suppress React hydration mismatch for dark class applied via script */
+  color-scheme: dark light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* tabular numerics for all financial values */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* thin scrollbar */
+::-webkit-scrollbar {
+  width: 3px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+/* hide number input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ─── Keyframe animations ────────────────────────────────────────────────── */
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { transform: translateY(14px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
 }

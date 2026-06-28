@@ -21,7 +21,7 @@
 |---|---|---|---|---|---|
 | M00 | DB Schema & Migrations | 1 | parallel | — | ✅ done |
 | M01 | Auth & Session | 2 | sequential | M00 | 🔄 in progress |
-| M02 | App Shell, Navigation & PWA | 2 | sequential | M00 | 🔄 in progress |
+| M02 | App Shell, Navigation & PWA | 2 | sequential | M00 | ✅ done |
 | M03 | Account Management | 3 | sequential | M01, M02 | ⏳ pending |
 | M04 | Categories & Groups | 3 | sequential | M01, M02 | ⏳ pending |
 | M05 | Transactions | 4 | sequential | M03, M04 | ⏳ pending |
@@ -113,41 +113,42 @@
 ---
 
 ### M02 — App Shell, Navigation & PWA
-- **Status:** 🔄 in progress
+- **Status:** ✅ done
 - **Type:** sequential (wave 2, parallel with M01)
 - **Depends on:** M00
 - **Worktree:** wt-m02-shell
-- **web:** ⏳ Root layout, route groups, bottom nav (mobile) + sidebar (desktop), FAB stub, OfflineBanner, theme switcher, PWA manifest + next-pwa config
+- **web:** ✅ Root layout, route groups `(auth)` + `(app)`, BottomNav (mobile) + Sidebar (desktop), FAB stub modal, OfflineBanner, ThemeProvider + theme store, PWA manifest + next-pwa config
 - **Tests:** —
 - **Migrations:** —
 
-#### AI Notes
-> **Navigation structure** (PRD §5.7): bottom nav on mobile, sidebar on desktop.
-> Sections: Presupuesto | Cuentas | Helpers | Dashboard | Configuración.
+#### AI Notes (decisions — 2026-06-28)
+> **Navigation order** follows DESIGN.md visual reference: Presupuesto → Cuentas → Dashboard → Helpers → Configuración.
+> PLAN.md AI Notes listed a different order (Helpers before Dashboard) — DESIGN.md takes precedence for UI.
 >
-> **FAB (Floating Action Button):** Always visible in bottom-right. In this module, wire it to open
-> a modal stub — the actual Quick Add form is built in M05.
+> **Theme infrastructure:**
+> - Tailwind v4 class-based dark mode: `@custom-variant dark (&:is(.dark, .dark *))` in `globals.css`.
+> - Three accent themes (azul / violeta / esmeralda) via CSS variables `--ac`, `--ab`, `--aB`, `--a-shadow` on `:root`.
+> - `data-accent` attribute set on `<html>` by `ThemeProvider`.
+> - Inline `<script>` in `<head>` prevents dark-mode flash before React hydrates.
+> - Theme persisted to `localStorage` (`zbb-theme` key via Zustand persist).
+> - DB sync of `user_settings.theme` deferred to M01 (requires auth).
 >
-> **Offline banner** (PRD §2.1): Non-blocking banner at the top when offline.
-> Use `navigator.onLine` + `online`/`offline` events. Never show a modal.
+> **next-pwa v5.6 + Next.js 16:** next-pwa is configured in `next.config.ts` with `require()`.
+> Disabled in development (`disable: process.env.NODE_ENV === 'development'`).
+> SW is generated at build time. PNG icons at `public/icons/icon-192.png` and `public/icons/icon-512.png`
+> **must be created before the first production deploy** — only `public/icons/app-icon.svg` exists now.
 >
-> **Theme** (PRD §5.7): `light | dark | system` — detect from `prefers-color-scheme`.
-> Persist in `user_settings.theme` (synced to DB). Use Tailwind's `class` dark mode strategy.
+> **App shell layout (`(app)/layout.tsx`):**
+> - Sidebar (`w-60`) shown at `lg:` breakpoint only.
+> - Content area has `lg:pl-60` to clear the sidebar.
+> - BottomNav is `fixed bottom-0` on mobile; content has `pb-16` to avoid overlap.
+> - FAB is `fixed bottom-[82px] right-[20px]` (above bottom nav on mobile).
 >
-> **PWA config** (TRD §5.1 — next-pwa):
-> ```js
-> // next.config.js
-> runtimeCaching: [{
->   urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/,
->   handler: 'NetworkFirst',
->   options: { cacheName: 'supabase-api', expiration: { maxAgeSeconds: 300 } }
-> }]
-> ```
-> Shell assets use `CacheFirst`. Service worker must be registered with `skipWaiting: true`.
+> **PendingTransactionsPanel:** Shell with loading skeleton at `z-50`. `isOpen` hardcoded to `false`
+> in `(app)/layout.tsx`. **M06 must update the layout** to pass real `isOpen` / `onClose` props.
 >
-> **Pending transactions panel** (PRD §5.1.2): After login, if any scheduled transactions are due,
-> show this panel before the main budget view. Implement the panel shell here with a loading state;
-> M06 fills the logic.
+> **OfflineBanner:** Uses lazy `useState` initializer (`navigator.onLine`) + `online`/`offline` events.
+> Avoids the ESLint `react-hooks/set-state-in-effect` error from synchronous setState in effects.
 
 ---
 
