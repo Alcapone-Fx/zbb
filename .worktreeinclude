@@ -1,18 +1,14 @@
 # .worktreeinclude
-# Archivos gitignored que Claude Code copia automáticamente
-# a cada nuevo worktree al crearlo con claude --worktree
+# Files that are gitignored but get copied into every new worktree
+# by `claude --worktree`. Without these, agents can't connect to
+# Supabase and all DB calls fail immediately.
 #
-# Sintaxis igual a .gitignore (patrones glob)
-# Sin este archivo, los agentes en worktrees no tienen
-# variables de entorno y fallan en el primer test de BD.
+# Syntax: same glob patterns as .gitignore
 
-# Variables de entorno
-.env
+# Local env — Supabase URL, anon key, service role key, etc.
 .env.local
-.env.development
-.env.test
-.env.production
 
-# Configuración local que no va al repo
-.env.*.local
-
+# Any other per-environment overrides that may exist locally
+.env.development.local
+.env.test.local
+.env.production.local
