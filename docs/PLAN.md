@@ -9,7 +9,7 @@
 ## General status
 
 - **Phase:** development
-- **Last update:** 2026-06-28 by /next-wave (wave 2 launched)
+- **Last update:** 2026-06-28 by /next-wave (wave 3 launched)
 - **Main builds:** ✅ (Next.js 16.2.9, 2026-06-28)
 - **Tests on main:** —
 
@@ -20,10 +20,10 @@
 | ID | Module | Wave | Type | Depends on | Status |
 |---|---|---|---|---|---|
 | M00 | DB Schema & Migrations | 1 | parallel | — | ✅ done |
-| M01 | Auth & Session | 2 | sequential | M00 | 🔄 in progress |
+| M01 | Auth & Session | 2 | sequential | M00 | ✅ done |
 | M02 | App Shell, Navigation & PWA | 2 | sequential | M00 | ✅ done |
-| M03 | Account Management | 3 | sequential | M01, M02 | ⏳ pending |
-| M04 | Categories & Groups | 3 | sequential | M01, M02 | ⏳ pending |
+| M03 | Account Management | 3 | sequential | M01, M02 | 🔄 in progress |
+| M04 | Categories & Groups | 3 | sequential | M01, M02 | 🔄 in progress |
 | M05 | Transactions | 4 | sequential | M03, M04 | ⏳ pending |
 | M06 | Scheduled Transactions | 5 | sequential | M05 | ⏳ pending |
 | M07 | Bank Reconciliation | 5 | sequential | M05 | ⏳ pending |
@@ -175,10 +175,10 @@
 ---
 
 ### M03 — Account Management
-- **Status:** ⏳ pending
+- **Status:** 🔄 in progress
 - **Type:** sequential (wave 3, parallel with M04)
 - **Depends on:** M01, M02
-- **Worktree:** —
+- **Worktree:** wt-m03-accounts
 - **web:** ⏳ Account list (On-Budget / Off-Budget groups), create account form, edit name, archive action, net worth totals
 - **db:** ⏳ Route Handler for account CRUD; trigger/function for CC system category creation
 - **Tests:** ⏳ Unit test credit card system category logic
@@ -206,10 +206,10 @@
 ---
 
 ### M04 — Categories & Groups
-- **Status:** ⏳ pending
+- **Status:** 🔄 in progress
 - **Type:** sequential (wave 3, parallel with M03)
 - **Depends on:** M01, M02
-- **Worktree:** —
+- **Worktree:** wt-m04-categories
 - **web:** ⏳ Category group list, create/edit/archive/delete group, create/edit/archive/delete category, drag-and-drop reorder for both groups and categories
 - **db:** ⏳ Route Handlers for group/category CRUD; enforce system category protection
 - **Tests:** ⏳ Unit test archive/delete guard logic
