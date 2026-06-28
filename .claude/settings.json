@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Read(**)",
+      "Write(docs/PLAN.md)",
+      "Write(docs/CONVENTIONS.md)",
+      "Write(CLAUDE.md)",
+      "Write(apps/**)",
+      "Write(packages/**)"
+    ],
+    "deny": [
+      "Write(docs/PRD.md)",
+      "Write(docs/TRD.md)"
+    ]
+  }
+}
