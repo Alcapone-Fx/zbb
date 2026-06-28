@@ -37,6 +37,9 @@
 /supabase/.temp
 /.supabase
 
+# ui reference screenshots (local only — used by agents but not committed)
+/docs/ui-reference/
+
 # misc
 .DS_Store
 Thumbs.db
