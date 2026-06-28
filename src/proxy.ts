@@ -8,6 +8,8 @@ const PROTECTED_PREFIXES = [
   '/transactions',
   '/dashboard',
   '/helpers',
+  '/settings',
+  '/categories',
 ]
 
 const AUTH_PAGES = ['/login', '/register', '/forgot-password', '/verify-email']

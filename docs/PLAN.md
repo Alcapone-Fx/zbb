@@ -9,7 +9,7 @@
 ## General status
 
 - **Phase:** development
-- **Last update:** 2026-06-28 by /next-wave (wave 3 launched)
+- **Last update:** 2026-06-28 by M04 agent
 - **Main builds:** ✅ (Next.js 16.2.9, 2026-06-28)
 - **Tests on main:** —
 
@@ -232,13 +232,13 @@
 ---
 
 ### M04 — Categories & Groups
-- **Status:** 🔄 in progress
+- **Status:** ✅ done
 - **Type:** sequential (wave 3, parallel with M03)
 - **Depends on:** M01, M02
 - **Worktree:** wt-m04-categories
-- **web:** ⏳ Category group list, create/edit/archive/delete group, create/edit/archive/delete category, drag-and-drop reorder for both groups and categories
-- **db:** ⏳ Route Handlers for group/category CRUD; enforce system category protection
-- **Tests:** ⏳ Unit test archive/delete guard logic
+- **web:** ✅ Category group list, create/edit/archive/delete group, create/edit/archive/delete category, drag-and-drop reorder for both groups and categories; accessible from Settings → Categorías
+- **db:** ✅ Route Handlers for group/category CRUD; enforce system category protection at Route Handler level
+- **Tests:** ✅ 9 unit tests for archive/delete guard logic (`src/lib/zbb/__tests__/category-guards.test.ts`)
 - **Migrations:** — (schema in M00)
 
 #### AI Notes
@@ -261,6 +261,31 @@
 >
 > **ideal_percentage on groups** (TRD §4.2): Used in Dashboard (M09) for Ideal vs. Real comparison.
 > Expose as an editable field in the group edit form. Optional, nullable.
+>
+> #### AI Notes — Implementation decisions (2026-06-28)
+>
+> **API routes (M04):**
+> - `GET  /api/categories/groups` — returns all groups + their categories (non-system + system).
+> - `POST /api/categories/groups` — create group. Computes `display_order = max + 1`.
+> - `PATCH /api/categories/groups/[id]` — edit name/ideal_percentage/is_archived. Archiving a group also archives all its non-system categories.
+> - `DELETE /api/categories/groups/[id]` — blocked (409) if any category in the group has transactions.
+> - `PATCH /api/categories/groups/reorder` — accepts `{ ids: string[] }`, updates `display_order` in batch.
+> - `POST /api/categories` — create category inside a group. Blocked (403) if group `is_system`.
+> - `PATCH /api/categories/[id]` — edit name/is_archived.
+> - `DELETE /api/categories/[id]` — blocked (409) if category has any transactions.
+> - `PATCH /api/categories/reorder` — accepts `{ group_id, ids }`, updates `display_order` in batch.
+>
+> **System group in the UI:** Shown below user groups in read-only mode (Lock icon, no controls, no drag handle). System categories within it also read-only with "Sistema" badge.
+>
+> **Categories page URL:** `/categories` — protected by `proxy.ts`. Linked from `/settings` → "Categorías y grupos" card. Also added `/settings` to `PROTECTED_PREFIXES` (was missing).
+>
+> **Server Component + Client Component split:** `categories/page.tsx` is a Server Component that fetches initial data via `createClient()` and passes `initialGroups` to `<CategoriesClient>`. Avoids `useEffect` for data fetch (which violates `react-hooks/set-state-in-effect`). Mutations use optimistic state updates from API response bodies (no full refetch).
+>
+> **Form sheets (GroupFormSheet, CategoryFormSheet):** Use inner `*FormBody` components rendered inside `BottomSheet`. Since `BottomSheet` returns `null` when `!open`, the body unmounts on close and remounts fresh on re-open — `useState(initialValue)` always initializes to the current prop value. No `useEffect` needed.
+>
+> **DnD (@dnd-kit v6 + sortable v10):** `PointerSensor` with `distance: 8` activation constraint prevents accidental drags on click. User groups use an outer `DndContext`; categories within each group use a nested `DndContext`. System groups are excluded from the outer `SortableContext` (always appear below user groups). Reorder is persisted with optimistic local state update + async PATCH.
+>
+> **Guard functions (`src/lib/zbb/category-guards.ts`):** Pure functions `canDeleteCategory`, `canDeleteGroup`, `canEditItem`, `canArchiveItem`. 9 unit tests in `src/lib/zbb/__tests__/category-guards.test.ts`. The Route Handlers use inline Supabase queries for transaction count checks rather than calling these (pure functions can't call Supabase), but the tests cover the logic used to decide 409 vs 204.
 
 ---
 
