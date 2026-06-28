@@ -223,3 +223,7 @@ Without it, session ends when the browser tab closes (default Supabase behavior 
 | 2026-06-28 | M01 | Open redirect guard on auth callback `next` params | Validate `next` is relative (`startsWith('/')` and not `startsWith('//')`) before redirecting; external URLs fall back to `/budget` |
 | 2026-06-28 | All | Next.js 16: proxy.ts not middleware.ts | Next.js 16 deprecated `middleware.ts`; use `src/proxy.ts` with `export async function proxy()` — not `middleware()` |
 | 2026-06-28 | All | Run `npm install` after adding deps to package.json | Agents must run `npm install` before committing when they add packages; omitting it breaks the build for downstream worktrees |
+| 2026-06-28 | M02 | Tailwind v4 class dark mode: `@custom-variant dark (&:is(.dark, .dark *))` | `tailwind.config.js` does not exist in v4; dark mode strategy must be declared in CSS via `@custom-variant` |
+| 2026-06-28 | M02 | Accent theme via CSS vars `--ac/--ab/--aB/--a-shadow` + `data-accent` on `<html>` | Three accent options (azul/violeta/esmeralda); use `var(--ac)` or Tailwind `bg-[var(--ac)]` in components |
+| 2026-06-28 | M02 | Theme persisted to `localStorage` (Zustand persist); DB sync deferred to M01 auth | Cannot sync to `user_settings.theme` before auth is in place; M01 must wire the sync |
+| 2026-06-28 | M02 | Navigation order: Presupuesto → Cuentas → Dashboard → Helpers → Config | DESIGN.md visual reference takes precedence; PRD §5.7 listed different order |
