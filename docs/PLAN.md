@@ -77,14 +77,14 @@
 ---
 
 ### M01 — Auth & Session
-- **Status:** 🔄 in progress
+- **Status:** ✅ done
 - **Type:** sequential (wave 2)
 - **Depends on:** M00
 - **Worktree:** wt-m01-auth
-- **web:** ⏳ Login page, register page, forgot-password page, email verify callback, reset-password page, Next.js middleware, inactivity timer
-- **db:** ⏳ Supabase Auth config (email verification enabled, token TTLs)
-- **Tests:** ⏳ Unit tests for inactivity timer logic
-- **Migrations:** — (Supabase Auth manages its own tables; `user_settings` row auto-created on first login)
+- **web:** ✅ Login page, register page, forgot-password page, email verify callback (`/auth/confirm`), reset-password page, Next.js middleware, inactivity timer hook
+- **db:** ⏳ Supabase Auth config (email verification enabled, token TTLs) — manual step in Supabase dashboard
+- **Tests:** ✅ 4 unit tests for inactivity timer (vitest + Testing Library, all pass)
+- **Migrations:** — (Supabase Auth manages its own tables; `user_settings` row auto-created by `handle_new_user()` DB webhook from M00)
 
 #### AI Notes
 > **Supabase Auth handles all password hashing** (bcrypt). Do not implement custom hashing (TRD §2.1).
@@ -109,6 +109,28 @@
 >
 > **`user_settings` row:** Insert a default `user_settings` row for the new user inside a
 > Supabase Database Webhook or an Edge Function triggered on `auth.users` insert — not in the Next.js app layer.
+>
+> #### AI Notes — Implementation decisions (2026-06-28)
+>
+> **Zod v4 uses `.issues` not `.errors`** — `result.error.issues[0].message`, not `.errors`. The project has Zod ^4.4.3; any future module must use `.issues`.
+>
+> **`@supabase/ssr` v0.12.0 cookie API** — uses `getAll`/`setAll` (not the older `get`/`set`/`remove`). Server client (`src/lib/supabase/server.ts`) is async because Next.js 15+ `cookies()` returns a Promise.
+>
+> **Supabase client singleton** — `src/lib/supabase/client.ts` maintains a module-level singleton to avoid creating a new client per render. Server client is a factory (new instance per request) — this is intentional for SSR correctness.
+>
+> **Open redirect guard in `/auth/confirm`** — `next` query param is validated to be a relative path (`startsWith('/')` and not `startsWith('//')`). External URLs are silently replaced with `/budget`. Security review flagged this as critical.
+>
+> **Forgot password anti-enumeration** — always shows "check your email" regardless of whether the email exists. The Supabase error is `console.error`'d on the client (browser console, visible to user) but never shown in the UI.
+>
+> **Middleware uses `getUser()` not `getSession()`** — `getSession()` reads from cookie without server validation and can be spoofed. `getUser()` always makes a network call to Supabase to verify the JWT — required for the TRD §2.2 security model.
+>
+> **Vitest + Testing Library installed in M01** — 4 unit tests for inactivity timer. Config at `vitest.config.ts`, setup at `src/test/setup.ts`. The test stack is ready for M02+ to reuse.
+>
+> **Manual Supabase dashboard steps still required (not automated):**
+> 1. Enable email verification in Auth settings.
+> 2. Set access token TTL = 3600s, refresh token TTL = 30 days.
+> 3. Wire the `handle_new_user()` webhook (Auth → Webhooks → Insert on auth.users) — from M00.
+> 4. Set allowed redirect URLs in Auth settings (add `/auth/confirm` and `/auth/reset-password`).
 
 ---
 

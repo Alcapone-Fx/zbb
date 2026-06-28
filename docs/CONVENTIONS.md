@@ -218,3 +218,6 @@ Without it, session ends when the browser tab closes (default Supabase behavior 
 | 2026-06-28 | M00 | `is_system` column added to `category_groups` | Required to distinguish the hidden "Sistema" system group from user groups |
 | 2026-06-28 | M00 | System group has no fixed UUID — query by `is_system = true` | Cannot seed a `category_groups` row at migration time (user_id FK requires real auth user); group created per-user by `handle_new_user()` DB webhook function |
 | 2026-06-28 | M01 | `user_settings` + system `category_group` created via Supabase DB Webhook | `handle_new_user()` function in migration; must be wired in Supabase dashboard; ensures atomicity and avoids race conditions |
+| 2026-06-28 | M01 | Zod v4: use `.issues` not `.errors` on `ZodError` | Project uses Zod ^4.4.3; `.errors` was removed in v4 — use `result.error.issues[0].message` |
+| 2026-06-28 | M01 | Middleware uses `getUser()` not `getSession()` | `getSession()` trusts the cookie without server-side verification and can be spoofed; `getUser()` validates the JWT with Supabase on every request |
+| 2026-06-28 | M01 | Open redirect guard on auth callback `next` params | Validate `next` is relative (`startsWith('/')` and not `startsWith('//')`) before redirecting; external URLs fall back to `/budget` |
