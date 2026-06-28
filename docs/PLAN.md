@@ -9,7 +9,7 @@
 ## General status
 
 - **Phase:** development
-- **Last update:** 2026-06-28 by M04 agent
+- **Last update:** 2026-06-28 by /next-wave (wave 4 launched)
 - **Main builds:** ✅ (Next.js 16.2.9, 2026-06-28)
 - **Tests on main:** —
 
@@ -23,8 +23,8 @@
 | M01 | Auth & Session | 2 | sequential | M00 | ✅ done |
 | M02 | App Shell, Navigation & PWA | 2 | sequential | M00 | ✅ done |
 | M03 | Account Management | 3 | sequential | M01, M02 | ✅ done |
-| M04 | Categories & Groups | 3 | sequential | M01, M02 | 🔄 in progress |
-| M05 | Transactions | 4 | sequential | M03, M04 | ⏳ pending |
+| M04 | Categories & Groups | 3 | sequential | M01, M02 | ✅ done |
+| M05 | Transactions | 4 | sequential | M03, M04 | 🔄 in progress |
 | M06 | Scheduled Transactions | 5 | sequential | M05 | ⏳ pending |
 | M07 | Bank Reconciliation | 5 | sequential | M05 | ⏳ pending |
 | M08 | Budget ZBB | 5 | sequential | M05 | ⏳ pending |
@@ -290,10 +290,10 @@
 ---
 
 ### M05 — Transactions
-- **Status:** ⏳ pending
+- **Status:** 🔄 in progress
 - **Type:** sequential (wave 4)
 - **Depends on:** M03, M04
-- **Worktree:** —
+- **Worktree:** wt-m05-transactions
 - **web:** ⏳ Quick Add form (FAB), transaction history view, filters (date range / category / type / tags / account), edit transaction, delete transaction, CSV export, payee autocomplete
 - **db:** ⏳ Route Handlers for CRUD; CC mirror transaction logic; transfer pair logic; payee suggestion query
 - **Tests:** ⏳ Unit test CC mirror logic; unit test transfer pair creation; unit test next_month income routing
