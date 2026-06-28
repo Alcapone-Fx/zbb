@@ -66,9 +66,11 @@ Then launch the first wave:
 Open one new terminal per printed command and run it:
 ```bash
 # Terminal 2
+claude
 claude --worktree wt-auth
 
 # Terminal 3
+claude
 claude --worktree wt-products
 ```
 

@@ -37,6 +37,7 @@ Cross-reference with modules listed as 🔄 in PLAN.md.
 ### 2. Update PLAN.md (post-merge only)
 For each newly merged module:
 - Set status ✅, record date
+- Run: git worktree remove .claude/worktrees/wt-[name] --force
 - Check every sequential module: if all its dependencies are now ✅,
   mark it as unblocked (still ⏳ but ready to launch)
 
@@ -66,8 +67,13 @@ Maximum 5 at once — more exceeds the dev's review capacity.
 
 Open a new terminal for each:
 
-  Terminal 2:  claude --worktree wt-auth
-  Terminal 3:  claude --worktree wt-products
+  Terminal 2:
+  claude
+  claude --worktree wt-auth
+
+  Terminal 3:
+  claude
+  claude --worktree wt-products
 
 Agents run unattended in auto mode.
 Check a terminal only if the agent pauses.
