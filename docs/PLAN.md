@@ -9,7 +9,7 @@
 ## General status
 
 - **Phase:** development
-- **Last update:** 2026-06-28 by /next-wave
+- **Last update:** 2026-06-28 by /next-wave (wave 2 launched)
 - **Main builds:** ✅ (Next.js 16.2.9, 2026-06-28)
 - **Tests on main:** —
 
@@ -20,8 +20,8 @@
 | ID | Module | Wave | Type | Depends on | Status |
 |---|---|---|---|---|---|
 | M00 | DB Schema & Migrations | 1 | parallel | — | ✅ done |
-| M01 | Auth & Session | 2 | sequential | M00 | ⏳ pending |
-| M02 | App Shell, Navigation & PWA | 2 | sequential | M00 | ⏳ pending |
+| M01 | Auth & Session | 2 | sequential | M00 | 🔄 in progress |
+| M02 | App Shell, Navigation & PWA | 2 | sequential | M00 | 🔄 in progress |
 | M03 | Account Management | 3 | sequential | M01, M02 | ⏳ pending |
 | M04 | Categories & Groups | 3 | sequential | M01, M02 | ⏳ pending |
 | M05 | Transactions | 4 | sequential | M03, M04 | ⏳ pending |
@@ -77,10 +77,10 @@
 ---
 
 ### M01 — Auth & Session
-- **Status:** ⏳ pending
+- **Status:** 🔄 in progress
 - **Type:** sequential (wave 2)
 - **Depends on:** M00
-- **Worktree:** —
+- **Worktree:** wt-m01-auth
 - **web:** ⏳ Login page, register page, forgot-password page, email verify callback, reset-password page, Next.js middleware, inactivity timer
 - **db:** ⏳ Supabase Auth config (email verification enabled, token TTLs)
 - **Tests:** ⏳ Unit tests for inactivity timer logic
@@ -113,10 +113,10 @@
 ---
 
 ### M02 — App Shell, Navigation & PWA
-- **Status:** ⏳ pending
+- **Status:** 🔄 in progress
 - **Type:** sequential (wave 2, parallel with M01)
 - **Depends on:** M00
-- **Worktree:** —
+- **Worktree:** wt-m02-shell
 - **web:** ⏳ Root layout, route groups, bottom nav (mobile) + sidebar (desktop), FAB stub, OfflineBanner, theme switcher, PWA manifest + next-pwa config
 - **Tests:** —
 - **Migrations:** —
