@@ -22,7 +22,7 @@
 | M00 | DB Schema & Migrations | 1 | parallel | — | ✅ done |
 | M01 | Auth & Session | 2 | sequential | M00 | ✅ done |
 | M02 | App Shell, Navigation & PWA | 2 | sequential | M00 | ✅ done |
-| M03 | Account Management | 3 | sequential | M01, M02 | 🔄 in progress |
+| M03 | Account Management | 3 | sequential | M01, M02 | ✅ done |
 | M04 | Categories & Groups | 3 | sequential | M01, M02 | 🔄 in progress |
 | M05 | Transactions | 4 | sequential | M03, M04 | ⏳ pending |
 | M06 | Scheduled Transactions | 5 | sequential | M05 | ⏳ pending |
@@ -175,13 +175,13 @@
 ---
 
 ### M03 — Account Management
-- **Status:** 🔄 in progress
+- **Status:** ✅ done
 - **Type:** sequential (wave 3, parallel with M04)
 - **Depends on:** M01, M02
 - **Worktree:** wt-m03-accounts
-- **web:** ⏳ Account list (On-Budget / Off-Budget groups), create account form, edit name, archive action, net worth totals
-- **db:** ⏳ Route Handler for account CRUD; trigger/function for CC system category creation
-- **Tests:** ⏳ Unit test credit card system category logic
+- **web:** ✅ Account list (On-Budget / Off-Budget groups), create account form, edit name, archive action, net worth totals
+- **db:** ✅ Route Handlers: GET+POST `/api/accounts`, PATCH `/api/accounts/[id]`; CC system category inserted on credit_card account creation
+- **Tests:** ✅ 10 unit tests (buildCreditCardCategoryName × 3, computeNetWorth × 7) — all pass
 - **Migrations:** — (schema in M00)
 
 #### AI Notes
@@ -202,6 +202,32 @@
 >
 > **Net Worth display:** Sum of all On-Budget accounts + Off-Budget non-liability accounts − liability accounts.
 > Compute server-side as a single aggregation query.
+>
+> #### AI Notes — Implementation decisions (2026-06-28)
+>
+> **Liability balance convention:** `liability` account balances are stored as POSITIVE numbers
+> (the amount owed). `computeNetWorth` subtracts them: `sum − liability.balance`. All other account
+> types use signed balances (negative = debt, e.g. credit card charges). Pure function in
+> `src/lib/zbb/accounts.ts`.
+>
+> **Balance computation approach:** Fetches all `(account_id, amount)` pairs for the user in one
+> query and sums per account in JS (no DB aggregate). Acceptable for current scale.
+>
+> **Archive balance check uses 0.001 epsilon** to guard against floating-point when summing
+> `NUMERIC(12,2)` values converted via `Number()`. Enforced in the Route Handler.
+>
+> **`is_tracking_only` defaults by type:** `investment` and `liability` default to `true` (off-budget);
+> all others default to `false`. User can toggle in the create form.
+>
+> **CC system category warning (non-fatal):** If the system `category_group` is not found (webhook
+> not yet registered in Supabase dashboard), the account is still created and a `console.warn` is logged.
+>
+> **File locations:**
+> - Types + Zod schemas: `src/types/account.ts`
+> - Pure functions (net worth, CC category name): `src/lib/zbb/accounts.ts`
+> - Route Handlers: `src/app/api/accounts/route.ts`, `src/app/api/accounts/[id]/route.ts`
+> - UI components: `src/components/accounts/`
+> - Tests: `src/test/accounts.test.ts`
 
 ---
 
