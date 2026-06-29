@@ -11,6 +11,7 @@ import {
   MoreVertical,
   Pencil,
   Archive,
+  CheckCircle2,
 } from "lucide-react";
 import type { AccountWithBalance, AccountType } from "@/types/account";
 
@@ -36,10 +37,11 @@ interface Props {
   account: AccountWithBalance;
   onEdit: (account: AccountWithBalance) => void;
   onArchive: (account: AccountWithBalance) => void;
+  onReconcile: (account: AccountWithBalance) => void;
   archiving: boolean;
 }
 
-export function AccountCard({ account, onEdit, onArchive, archiving }: Props) {
+export function AccountCard({ account, onEdit, onArchive, onReconcile, archiving }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const Icon = TYPE_ICONS[account.type];
@@ -115,6 +117,14 @@ export function AccountCard({ account, onEdit, onArchive, archiving }: Props) {
             >
               <Pencil size={14} />
               Editar nombre
+            </button>
+            <button
+              onClick={() => { setMenuOpen(false); onReconcile(account); }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors"
+              style={{ color: "var(--text-sub)" }}
+            >
+              <CheckCircle2 size={14} />
+              Conciliar
             </button>
             <button
               onClick={() => { setMenuOpen(false); onArchive(account); }}

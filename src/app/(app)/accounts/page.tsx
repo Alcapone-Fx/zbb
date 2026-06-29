@@ -5,6 +5,8 @@ import type { AccountWithBalance, AccountsResponse } from "@/types/account";
 import { AccountGroup } from "@/components/accounts/AccountGroup";
 import { CreateAccountModal } from "@/components/accounts/CreateAccountModal";
 import { EditAccountModal } from "@/components/accounts/EditAccountModal";
+import { ReconciliationSheet } from "@/components/accounts/ReconciliationSheet";
+import { X } from "lucide-react";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-419", {
@@ -31,6 +33,7 @@ export default function AccountsPage() {
   const [createTrackingOnly, setCreateTrackingOnly] = useState(false);
 
   const [editTarget, setEditTarget] = useState<AccountWithBalance | null>(null);
+  const [reconcileTarget, setReconcileTarget] = useState<AccountWithBalance | null>(null);
 
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [archiveError, setArchiveError] = useState<string | null>(null);
@@ -164,6 +167,7 @@ export default function AccountsPage() {
           archivingId={archivingId}
           onEdit={setEditTarget}
           onArchive={handleArchive}
+          onReconcile={setReconcileTarget}
           onAdd={() => openCreateForGroup(false)}
         />
 
@@ -174,6 +178,7 @@ export default function AccountsPage() {
           archivingId={archivingId}
           onEdit={setEditTarget}
           onArchive={handleArchive}
+          onReconcile={setReconcileTarget}
           onAdd={() => openCreateForGroup(true)}
         />
       </div>
@@ -190,6 +195,58 @@ export default function AccountsPage() {
         onClose={() => setEditTarget(null)}
         onSaved={fetchAccounts}
       />
+
+      {/* Reconciliation bottom sheet */}
+      {reconcileTarget && (
+        <div
+          className="fixed inset-0 z-40 flex items-end"
+          style={{ background: "rgba(0,0,0,0.72)" }}
+          onClick={() => setReconcileTarget(null)}
+        >
+          <div
+            className="w-full max-h-[92dvh] overflow-y-auto animate-[slideUp_0.32s_cubic-bezier(0.34,1.2,0.64,1)]"
+            style={{
+              background: "var(--bg-surface)",
+              borderRadius: "24px 24px 0 0",
+              padding: "0 20px 48px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-4">
+              <div
+                className="w-9 h-1"
+                style={{ background: "rgba(255,255,255,0.12)", borderRadius: "2px" }}
+              />
+            </div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2
+                  className="text-xl font-extrabold"
+                  style={{ color: "var(--text-main)" }}
+                >
+                  Conciliar cuenta
+                </h2>
+                <p className="text-sm mt-0.5" style={{ color: "var(--text-sub)" }}>
+                  {reconcileTarget.name}
+                </p>
+              </div>
+              <button
+                onClick={() => setReconcileTarget(null)}
+                aria-label="Cerrar"
+                className="p-1.5 rounded-xl"
+                style={{ color: "var(--text-dim)" }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <ReconciliationSheet
+              account={reconcileTarget}
+              onClose={() => setReconcileTarget(null)}
+              onDone={fetchAccounts}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

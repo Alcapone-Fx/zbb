@@ -11,6 +11,7 @@ interface Props {
   archivingId: string | null;
   onEdit: (account: AccountWithBalance) => void;
   onArchive: (account: AccountWithBalance) => void;
+  onReconcile: (account: AccountWithBalance) => void;
   onAdd: () => void;
 }
 
@@ -21,6 +22,7 @@ export function AccountGroup({
   archivingId,
   onEdit,
   onArchive,
+  onReconcile,
   onAdd,
 }: Props) {
   return (
@@ -51,6 +53,7 @@ export function AccountGroup({
               account={account}
               onEdit={onEdit}
               onArchive={onArchive}
+              onReconcile={onReconcile}
               archiving={archivingId === account.id}
             />
           ))}

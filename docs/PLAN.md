@@ -402,16 +402,16 @@
 ---
 
 ### M07 — Bank Reconciliation
-- **Status:** 🔄 in progress
+- **Status:** ✅ done
 - **Type:** sequential (wave 5, parallel with M06 + M08)
 - **Depends on:** M05
 - **Worktree:** wt-m07-reconciliation
-- **web:** ⏳ Reconciliation screen per account (accessible from account detail), bank balance input, difference display, one-click adjustment transaction creation, reconciled transaction indicators
-- **db:** ⏳ Route Handlers for reconciliation record CRUD; mark transactions as reconciled
-- **Tests:** ⏳ Unit test adjustment amount calculation
-- **Migrations:** — (schema in M00)
+- **web:** ✅ ReconciliationSheet bottom sheet (accessible from account card menu), date input, app balance fetch, difference display, adjustment category selector, success state
+- **db:** ✅ `GET /api/reconciliation` (list records), `POST /api/reconciliation` (complete reconciliation + adjustment tx + mark reconciled), `GET /api/reconciliation/balance` (compute app balance)
+- **Tests:** ✅ Unit tests for `calcAdjustmentAmount` and `isBalanced` (`src/lib/zbb/__tests__/reconciliation.test.ts`)
+- **Migrations:** — (schema already in M00)
 
-#### AI Notes
+#### AI Notes (decisions — 2026-06-29)
 > **3-step flow** (PRD §5.2):
 > 1. User enters the real bank balance at a given date.
 > 2. System shows difference: `bank_balance − app_balance`.
@@ -422,9 +422,24 @@
 >
 > **Reconciled flag:** After completing reconciliation, mark all transactions up to the date
 > as `is_reconciled = true`. These transactions show a visual indicator in the history view (M05).
+> `TransactionRow` already rendered the `CheckCircle2` icon for `is_reconciled` — no change needed there.
 >
 > **Adjustment transaction:** type = `'adjustment'`, amount = `bank_balance − app_balance`.
 > Store the `adjustment_transaction_id` in `reconciliation_records`.
+>
+> **Entry point:** "Conciliar" option added to `AccountCard` three-dot menu → opens `ReconciliationSheet` bottom sheet in accounts page.
+>
+> **Category requirement:** Only enforced for on-budget accounts (`is_tracking_only = false`). Tracking-only accounts can reconcile without a category.
+>
+> **File locations:**
+> - Types + Zod schemas: `src/types/reconciliation.ts`
+> - Pure functions: `src/lib/zbb/reconciliation.ts`
+> - Tests: `src/lib/zbb/__tests__/reconciliation.test.ts`
+> - Route Handlers: `src/app/api/reconciliation/route.ts`, `balance/route.ts`
+> - UI: `src/components/accounts/ReconciliationSheet.tsx`
+> - AccountCard updated: `src/components/accounts/AccountCard.tsx` (added Conciliar menu item)
+> - AccountGroup updated: `src/components/accounts/AccountGroup.tsx` (thread onReconcile prop)
+> - Accounts page updated: `src/app/(app)/accounts/page.tsx` (wire ReconciliationSheet)
 
 ---
 
