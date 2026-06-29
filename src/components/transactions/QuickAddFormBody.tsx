@@ -39,6 +39,9 @@ export function QuickAddFormBody({ onClose }: Props) {
   const [memo, setMemo] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [nextMonth, setNextMonth] = useState(false);
+  const [makeRecurring, setMakeRecurring] = useState(false);
+  const [recurFrequency, setRecurFrequency] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
+  const [recurStartDate, setRecurStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -118,22 +121,49 @@ export function QuickAddFormBody({ onClose }: Props) {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    const body: CreateTransactionInput = {
-      date,
-      type,
-      account_id: accountId,
-      amount: parsedAmount,
-      category_id: categoryId || null,
-      payee: payee.trim() || null,
-      memo: memo.trim() || null,
-      tags,
-      next_month: type === "income" ? nextMonth : false,
-      ...(type === "transfer"
-        ? { transfer_to_account_id: transferToAccountId }
-        : {}),
-    };
-
     try {
+      if (makeRecurring && type !== "transfer") {
+        // Create a scheduled transaction template instead of an immediate transaction
+        const scheduledBody = {
+          account_id: accountId,
+          category_id: categoryId || null,
+          type,
+          amount: parsedAmount,
+          payee: payee.trim() || null,
+          memo: memo.trim() || null,
+          frequency: recurFrequency,
+          start_date: recurStartDate,
+        };
+        const res = await fetch("/api/scheduled-transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(scheduledBody),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          setError(json.error ?? "Error al guardar");
+          return;
+        }
+        router.refresh();
+        onClose();
+        return;
+      }
+
+      const body: CreateTransactionInput = {
+        date,
+        type,
+        account_id: accountId,
+        amount: parsedAmount,
+        category_id: categoryId || null,
+        payee: payee.trim() || null,
+        memo: memo.trim() || null,
+        tags,
+        next_month: type === "income" ? nextMonth : false,
+        ...(type === "transfer"
+          ? { transfer_to_account_id: transferToAccountId }
+          : {}),
+      };
+
       const res = await fetch("/api/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -530,6 +560,101 @@ export function QuickAddFormBody({ onClose }: Props) {
         </div>
       )}
 
+      {/* Hacer recurrente (not available for transfers) */}
+      {type !== "transfer" && (
+        <div
+          className="rounded-2xl p-4"
+          style={{
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-card)",
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+                Hacer recurrente
+              </p>
+              <p className="text-xs" style={{ color: "var(--text-sub)" }}>
+                Programa esta transacción para que se repita
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={makeRecurring}
+              onClick={() => setMakeRecurring((v) => !v)}
+              className="relative w-12 h-6 rounded-full transition-colors shrink-0"
+              style={{
+                background: makeRecurring ? "var(--ac)" : "var(--bg-elevated)",
+                border: "1px solid var(--border-card)",
+              }}
+            >
+              <span
+                className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform"
+                style={{
+                  background: "#fff",
+                  transform: makeRecurring ? "translateX(24px)" : "translateX(0)",
+                }}
+              />
+            </button>
+          </div>
+
+          {makeRecurring && (
+            <div className="flex flex-col gap-3 mt-4 pt-4" style={{ borderTop: "1px solid var(--border-card)" }}>
+              <div className="flex flex-col gap-1.5">
+                <label
+                  className="text-xs font-bold uppercase tracking-widest"
+                  style={{ color: "var(--text-dim)" }}
+                >
+                  Frecuencia
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {(["daily", "weekly", "monthly", "yearly"] as const).map((f) => {
+                    const labels = { daily: "Diaria", weekly: "Semanal", monthly: "Mensual", yearly: "Anual" };
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setRecurFrequency(f)}
+                        className="py-2 rounded-xl text-xs font-bold transition-all"
+                        style={{
+                          background: recurFrequency === f ? "var(--ab)" : "var(--bg-elevated)",
+                          color: recurFrequency === f ? "var(--ac)" : "var(--text-sub)",
+                          border: recurFrequency === f ? "1px solid var(--aB)" : "1px solid transparent",
+                        }}
+                      >
+                        {labels[f]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label
+                  className="text-xs font-bold uppercase tracking-widest"
+                  style={{ color: "var(--text-dim)" }}
+                >
+                  Fecha de inicio
+                </label>
+                <input
+                  type="date"
+                  value={recurStartDate}
+                  onChange={(e) => setRecurStartDate(e.target.value)}
+                  required={makeRecurring}
+                  className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    color: "var(--text-main)",
+                    border: "1px solid var(--border-card)",
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {error && (
         <p
           className="text-sm rounded-xl px-4 py-3"
@@ -545,7 +670,11 @@ export function QuickAddFormBody({ onClose }: Props) {
         className="w-full py-3.5 rounded-2xl text-sm font-bold transition-opacity disabled:opacity-50"
         style={{ background: "var(--ac)", color: "#fff" }}
       >
-        {submitting ? "Guardando..." : "Registrar Transacción"}
+        {submitting
+          ? "Guardando..."
+          : makeRecurring && type !== "transfer"
+          ? "Guardar Recurrente"
+          : "Registrar Transacción"}
       </button>
     </form>
   );
