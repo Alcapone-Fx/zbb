@@ -1,22 +1,29 @@
-import { redirect } from 'next/navigation'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { DashboardClient } from '@/components/dashboard/DashboardClient'
+import { dashboardPeriodSchema } from '@/types/dashboard'
 import { computePeriodDateRange, computeIdealVsReal } from '@/lib/zbb/dashboard'
 import { computeNetWorth } from '@/lib/zbb/accounts'
 import type { AccountWithBalance } from '@/types/account'
 import type { DashboardData } from '@/types/dashboard'
 
-export default async function DashboardPage() {
+export async function GET(req: Request) {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const period = 'current_month' as const
+  const url = new URL(req.url)
+  const periodParam = url.searchParams.get('period') ?? 'current_month'
+  const parsed = dashboardPeriodSchema.safeParse(periodParam)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Período inválido' }, { status: 400 })
+  }
+  const period = parsed.data
   const { from, to } = computePeriodDateRange(period)
 
-  const [accountsRes, txPeriodRes, groupsRes, allTxRes] = await Promise.all([
+  // Parallel: accounts (for net worth), transactions (for KPIs), groups (for ideal%)
+  const [accountsRes, txRes, groupsRes] = await Promise.all([
     supabase
       .from('accounts')
       .select('id, name, type, is_tracking_only, is_archived, starting_balance, created_at')
@@ -37,16 +44,28 @@ export default async function DashboardPage() {
       .eq('is_system', false)
       .eq('is_archived', false)
       .not('ideal_percentage', 'is', null),
-
-    supabase
-      .from('transactions')
-      .select('account_id, amount')
-      .eq('user_id', user.id),
   ])
 
+  if (accountsRes.error || txRes.error || groupsRes.error) {
+    console.error('GET /api/dashboard error', accountsRes.error, txRes.error, groupsRes.error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+
+  // Net worth — real-time from all account balances (needs full tx history, not just period)
+  const allTxRes = await supabase
+    .from('transactions')
+    .select('account_id, amount')
+    .eq('user_id', user.id)
+
+  if (allTxRes.error) {
+    console.error('GET /api/dashboard allTx error', allTxRes.error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+
   const allAccounts = accountsRes.data ?? []
+  const allTxForNetWorth = allTxRes.data ?? []
   const balanceMap: Record<string, number> = {}
-  for (const t of allTxRes.data ?? []) {
+  for (const t of allTxForNetWorth) {
     balanceMap[t.account_id] = (balanceMap[t.account_id] ?? 0) + Number(t.amount)
   }
   const accountsWithBalance: AccountWithBalance[] = allAccounts.map((a) => ({
@@ -61,33 +80,42 @@ export default async function DashboardPage() {
   }))
   const net_worth = computeNetWorth(accountsWithBalance)
 
-  const onBudgetIds = new Set(allAccounts.filter((a) => !a.is_tracking_only).map((a) => a.id))
-  const periodTx = (txPeriodRes.data ?? []).filter((t) => onBudgetIds.has(t.account_id))
+  // On-budget account IDs (to filter period transactions)
+  const onBudgetIds = new Set(
+    allAccounts.filter((a) => !a.is_tracking_only).map((a) => a.id)
+  )
 
-  const categoryIdsInTx = [
-    ...new Set(periodTx.filter((t) => t.category_id).map((t) => t.category_id as string)),
-  ]
+  // KPI aggregations from period transactions on on-budget accounts
+  let net_income = 0
+  let total_expense = 0
+  const groupSpendingMap: Record<string, number> = {} // group_id → spending (positive abs)
+
+  // Need category→group mapping for group spending
+  // Fetch categories with group_id for the period transactions that have a category_id
+  const periodTx = (txRes.data ?? []).filter((t) => onBudgetIds.has(t.account_id))
+  const categoryIdsInTx = [...new Set(periodTx.filter((t) => t.category_id).map((t) => t.category_id as string))]
+
   const catGroupMap: Record<string, string> = {}
   if (categoryIdsInTx.length > 0) {
     const { data: cats } = await supabase
       .from('categories')
       .select('id, group_id')
       .in('id', categoryIdsInTx)
-    for (const c of cats ?? []) catGroupMap[c.id] = c.group_id
+    for (const c of cats ?? []) {
+      catGroupMap[c.id] = c.group_id
+    }
   }
 
   const groupsWithIdeal = groupsRes.data ?? []
   const groupsWithIdealIds = new Set(groupsWithIdeal.map((g) => g.id))
-  const groupSpendingMap: Record<string, number> = {}
 
-  let net_income = 0
-  let total_expense = 0
   for (const tx of periodTx) {
     const amount = Number(tx.amount)
     if (tx.type === 'income') {
       net_income += amount
     } else if (tx.type === 'expense') {
       total_expense += Math.abs(amount)
+      // Track spending per group (only groups with ideal_percentage set)
       if (tx.category_id) {
         const gid = catGroupMap[tx.category_id]
         if (gid && groupsWithIdealIds.has(gid)) {
@@ -111,7 +139,7 @@ export default async function DashboardPage() {
     net_income
   )
 
-  const initialData: DashboardData = {
+  const data: DashboardData = {
     period,
     net_income,
     total_expense,
@@ -122,5 +150,5 @@ export default async function DashboardPage() {
     ideal_vs_real,
   }
 
-  return <DashboardClient initialData={initialData} />
+  return NextResponse.json({ data })
 }
