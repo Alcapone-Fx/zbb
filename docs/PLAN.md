@@ -25,11 +25,11 @@
 | M03 | Account Management | 3 | sequential | M01, M02 | ✅ done |
 | M04 | Categories & Groups | 3 | sequential | M01, M02 | ✅ done |
 | M05 | Transactions | 4 | sequential | M03, M04 | ✅ done |
-| M06 | Scheduled Transactions | 5 | sequential | M05 | 🔄 in progress |
-| M07 | Bank Reconciliation | 5 | sequential | M05 | 🔄 in progress |
-| M08 | Budget ZBB | 5 | sequential | M05 | 🔄 in progress |
-| M09 | Dashboard & KPIs | 6 | sequential | M08 | ⏳ pending |
-| M10 | Helpers | 6 | sequential | M08 | ⏳ pending |
+| M06 | Scheduled Transactions | 5 | sequential | M05 | ✅ done |
+| M07 | Bank Reconciliation | 5 | sequential | M05 | ✅ done |
+| M08 | Budget ZBB | 5 | sequential | M05 | ✅ done |
+| M09 | Dashboard & KPIs | 6 | sequential | M08 | 🔄 in progress |
+| M10 | Helpers | 6 | sequential | M08 | 🔄 in progress |
 
 ---
 
@@ -369,7 +369,7 @@
 ---
 
 ### M06 — Scheduled Transactions
-- **Status:** 🔄 in progress
+- **Status:** ✅ done
 - **Type:** sequential (wave 5, parallel with M07 + M08)
 - **Depends on:** M05
 - **Worktree:** wt-m06-scheduled
@@ -523,10 +523,10 @@
 ---
 
 ### M09 — Dashboard & KPIs
-- **Status:** ⏳ pending
+- **Status:** 🔄 in progress
 - **Type:** sequential (wave 6, parallel with M10)
 - **Depends on:** M08
-- **Worktree:** —
+- **Worktree:** wt-m09-dashboard
 - **web:** ⏳ Dashboard page, period selector (current month / prev month / quarter / year), KPI cards (net income / total expense / savings / net worth), Ideal vs. Real table with traffic-light indicator, Budget Goals settings screen
 - **db:** ⏳ Route Handler for dashboard aggregations per period
 - **Tests:** ⏳ Unit test Ideal vs. Real percentage calculation
@@ -552,10 +552,10 @@
 ---
 
 ### M10 — Helpers
-- **Status:** ⏳ pending
+- **Status:** 🔄 in progress
 - **Type:** sequential (wave 6, parallel with M09)
 - **Depends on:** M08
-- **Worktree:** —
+- **Worktree:** wt-m10-helpers
 - **web:** ⏳ Helpers hub page + 5 helper screens: Grocery Calculator, Weekend Planner, Sinking Funds (CRUD + calculation), Emergency Fund Tiers, Wishlist (CRUD)
 - **db:** ⏳ Route Handlers for sinking_funds CRUD; Route Handlers for wishlist_items CRUD; read-only queries for emergency fund and weekend planner
 - **Tests:** ⏳ Unit test all helper calculation logic (pure functions — no I/O)
