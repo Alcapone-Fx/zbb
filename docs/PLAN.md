@@ -552,13 +552,13 @@
 ---
 
 ### M10 — Helpers
-- **Status:** 🔄 in progress
+- **Status:** ✅ done
 - **Type:** sequential (wave 6, parallel with M09)
 - **Depends on:** M08
 - **Worktree:** wt-m10-helpers
-- **web:** ⏳ Helpers hub page + 5 helper screens: Grocery Calculator, Weekend Planner, Sinking Funds (CRUD + calculation), Emergency Fund Tiers, Wishlist (CRUD)
-- **db:** ⏳ Route Handlers for sinking_funds CRUD; Route Handlers for wishlist_items CRUD; read-only queries for emergency fund and weekend planner
-- **Tests:** ⏳ Unit test all helper calculation logic (pure functions — no I/O)
+- **web:** ✅ Helpers hub page + 5 helper screens: Grocery Calculator, Weekend Planner, Sinking Funds (CRUD + calculation), Emergency Fund Tiers, Wishlist (CRUD)
+- **db:** ✅ Route Handlers for sinking_funds CRUD; Route Handlers for wishlist_items CRUD; read-only query for emergency fund; user-settings PATCH for emergency_fund_min_expense
+- **Tests:** ✅ 29 unit tests for all helper calc functions (pure functions — no I/O)
 - **Migrations:** — (schema in M00)
 
 #### AI Notes
@@ -567,24 +567,30 @@
 >
 > **Weekend Planner** (PRD §5.6.2): Count weekends in the current month (Saturdays + Sundays pairs).
 > Deduct fixed committed expenses. Divide remainder by weekend count.
-> "Asignar" button calls budget allocation PATCH.
+> "Asignar" button calls budget allocation PATCH with total weekend budget (available − fixed).
 >
 > **Sinking Funds** (PRD §5.6.3): CRUD for `sinking_funds` table.
 > Calculation: `monthly_contribution = (target_amount − current_category_balance) / months_remaining`.
-> `current_category_balance` = the "Disponible" for the linked category in the current month (from M08).
+> `current_category_balance` = the "Disponible" for the linked category in the current month (from M08 via `/api/budget/month`).
+> Client fetches both `/api/helpers/sinking-funds` and `/api/budget/month` and composes the calculation — avoids duplicating the complex rollover logic.
 > "Asignar" button calls budget allocation PATCH.
 >
 > **Emergency Fund Tiers** (PRD §5.6.4):
-> - Config: `user_settings.emergency_fund_min_expense` (nullable).
-> - If null when helper opens, prompt the user (suggest avg of last 3 months' Necesidades spending).
-> - Balance: SUM of all Off-Budget non-liability accounts.
+> - Config: `user_settings.emergency_fund_min_expense` (nullable). Updated via new `PATCH /api/user-settings`.
+> - If null when helper opens, prompt the user.
+> - Balance: SUM of `starting_balance + transactions` for `is_tracking_only=true AND type != 'liability'` accounts.
 > - Tiers: 1 / 3 / 6 / 12 months. Progress bar with 4-color coding (red / yellow / light-green / green).
 >
 > **Wishlist** (PRD §5.6.5): Simple CRUD for `wishlist_items`. No budget link in V1.
 > Fields: `name`, `estimated_cost`, `priority` (high/medium/low), `notes`.
 >
-> **All "Asignar" actions** call the same budget allocation PATCH endpoint used in M08 —
-> do not duplicate the allocation logic.
+> **All "Asignar" actions** call the same budget allocation POST endpoint from M08 —
+> no allocation logic was duplicated.
+>
+> **Files:** Types: `src/types/helpers.ts` · Calc: `src/lib/zbb/helpers-calc.ts` · Tests: `src/lib/zbb/__tests__/helpers-calc.test.ts`
+> API: `src/app/api/helpers/sinking-funds/`, `src/app/api/helpers/wishlist/`, `src/app/api/helpers/emergency-fund/`, `src/app/api/user-settings/`
+> UI: `src/components/helpers/` (HelpersClient, GroceryCalculator, WeekendPlanner, SinkingFundsHelper, EmergencyFundHelper, WishlistHelper)
+> Page: `src/app/(app)/helpers/page.tsx`
 
 ---
 
