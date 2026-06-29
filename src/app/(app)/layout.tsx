@@ -1,14 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { FAB } from "@/components/shared/FAB";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { PendingTransactionsPanel } from "@/components/shared/PendingTransactionsPanel";
+import type { ScheduledTransaction } from "@/types/scheduled-transaction";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [pendingOpen, setPendingOpen] = useState(false);
+  const [pendingItems, setPendingItems] = useState<ScheduledTransaction[]>([]);
+
+  // Check for due scheduled transactions on mount
+  useEffect(() => {
+    fetch("/api/scheduled-transactions/pending")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!json) return;
+        const items: ScheduledTransaction[] = json.data ?? [];
+        if (items.length > 0) {
+          setPendingItems(items);
+          setPendingOpen(true);
+        }
+      })
+      .catch(() => {
+        // Non-fatal — just don't open the panel
+      });
+  }, []);
+
+  function handleAllDone() {
+    setPendingOpen(false);
+    setPendingItems([]);
+    router.refresh();
+  }
 
   return (
     <>
@@ -36,8 +63,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* FAB — always visible */}
       <FAB />
 
-      {/* Pending transactions panel — M06 drives isOpen/onClose */}
-      <PendingTransactionsPanel isOpen={pendingOpen} onClose={() => setPendingOpen(false)} />
+      {/* Pending transactions panel */}
+      <PendingTransactionsPanel
+        isOpen={pendingOpen}
+        items={pendingItems}
+        onClose={() => setPendingOpen(false)}
+        onAllDone={handleAllDone}
+      />
     </>
   );
 }

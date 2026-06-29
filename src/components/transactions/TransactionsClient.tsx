@@ -7,6 +7,7 @@ import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
 import { TransactionRow, formatCurrency } from "./TransactionRow";
 import { EditTransactionSheet } from "./EditTransactionSheet";
+import { ScheduledTransactionsTab } from "./ScheduledTransactionsTab";
 
 interface Props {
   initialTransactions: TransactionWithDetails[];
@@ -63,6 +64,7 @@ export function TransactionsClient({
   initialDateFrom,
   initialDateTo,
 }: Props) {
+  const [activeTab, setActiveTab] = useState<"historial" | "programadas">("historial");
   const [transactions, setTransactions] =
     useState<TransactionWithDetails[]>(initialTransactions);
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
@@ -218,71 +220,109 @@ export function TransactionsClient({
           >
             Movimientos
           </h1>
-          <a
-            href={exportUrl}
-            download
-            aria-label="Exportar CSV"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-opacity hover:opacity-70"
-            style={{ background: "var(--bg-elevated)", color: "var(--text-sub)" }}
-          >
-            <Download size={14} />
-            CSV
-          </a>
+          {activeTab === "historial" && (
+            <a
+              href={exportUrl}
+              download
+              aria-label="Exportar CSV"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-opacity hover:opacity-70"
+              style={{ background: "var(--bg-elevated)", color: "var(--text-sub)" }}
+            >
+              <Download size={14} />
+              CSV
+            </a>
+          )}
         </div>
 
-        {/* Period KPIs */}
-        <div className="flex gap-4 mt-4">
-          <div>
-            <p
-              className="text-[10px] font-bold uppercase tracking-widest"
-              style={{ color: "var(--text-dim)" }}
-            >
-              Ingresos
-            </p>
-            <p
-              className="text-lg font-extrabold tabular-nums"
-              style={{ color: "var(--color-positive)" }}
-            >
-              {formatCurrency(totals.income)}
-            </p>
+        {/* Period KPIs — only shown in historial tab */}
+        {activeTab === "historial" && (
+          <div className="flex gap-4 mt-4">
+            <div>
+              <p
+                className="text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "var(--text-dim)" }}
+              >
+                Ingresos
+              </p>
+              <p
+                className="text-lg font-extrabold tabular-nums"
+                style={{ color: "var(--color-positive)" }}
+              >
+                {formatCurrency(totals.income)}
+              </p>
+            </div>
+            <div>
+              <p
+                className="text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "var(--text-dim)" }}
+              >
+                Gastos
+              </p>
+              <p
+                className="text-lg font-extrabold tabular-nums"
+                style={{ color: "var(--color-negative)" }}
+              >
+                {formatCurrency(totals.expenses)}
+              </p>
+            </div>
+            <div>
+              <p
+                className="text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "var(--text-dim)" }}
+              >
+                Balance
+              </p>
+              <p
+                className="text-lg font-extrabold tabular-nums"
+                style={{
+                  color:
+                    totals.balance >= 0
+                      ? "var(--color-positive)"
+                      : "var(--color-negative)",
+                }}
+              >
+                {formatCurrency(totals.balance)}
+              </p>
+            </div>
           </div>
-          <div>
-            <p
-              className="text-[10px] font-bold uppercase tracking-widest"
-              style={{ color: "var(--text-dim)" }}
-            >
-              Gastos
-            </p>
-            <p
-              className="text-lg font-extrabold tabular-nums"
-              style={{ color: "var(--color-negative)" }}
-            >
-              {formatCurrency(totals.expenses)}
-            </p>
-          </div>
-          <div>
-            <p
-              className="text-[10px] font-bold uppercase tracking-widest"
-              style={{ color: "var(--text-dim)" }}
-            >
-              Balance
-            </p>
-            <p
-              className="text-lg font-extrabold tabular-nums"
-              style={{
-                color:
-                  totals.balance >= 0
-                    ? "var(--color-positive)"
-                    : "var(--color-negative)",
-              }}
-            >
-              {formatCurrency(totals.balance)}
-            </p>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Filter bar */}
+      {/* Tab bar */}
+      <div
+        className="flex gap-1 px-5 py-3"
+        style={{ borderBottom: "1px solid var(--border-card)" }}
+      >
+        {(["historial", "programadas"] as const).map((tab) => {
+          const labels = { historial: "Historial", programadas: "Programadas" };
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
+              style={{
+                background: activeTab === tab ? "var(--ab)" : "transparent",
+                color: activeTab === tab ? "var(--ac)" : "var(--text-sub)",
+              }}
+            >
+              {labels[tab]}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Programadas tab */}
+      {activeTab === "programadas" && (
+        <ScheduledTransactionsTab
+          initialAccounts={initialAccounts}
+          initialGroups={initialGroups}
+        />
+      )}
+
+      {/* Filter bar + list — historial only */}
+      {activeTab === "historial" && (
+      <>
       <div
         className="px-5 py-3"
         style={{ borderBottom: "1px solid var(--border-card)" }}
@@ -509,6 +549,8 @@ export function TransactionsClient({
             fetchTransactions();
           }}
         />
+      )}
+      </>
       )}
     </>
   );
