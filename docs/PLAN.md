@@ -9,8 +9,8 @@
 ## General status
 
 - **Phase:** development
-- **Last update:** 2026-06-29 by /next-wave (wave 5 launched)
-- **Main builds:** ✅ (Next.js 16.2.9, 2026-06-28)
+- **Last update:** 2026-06-29 by /next-wave (wave 6 merged — all modules complete)
+- **Main builds:** ✅ (Next.js 16.2.9, 2026-06-29)
 - **Tests on main:** —
 
 ---
@@ -28,8 +28,8 @@
 | M06 | Scheduled Transactions | 5 | sequential | M05 | ✅ done |
 | M07 | Bank Reconciliation | 5 | sequential | M05 | ✅ done |
 | M08 | Budget ZBB | 5 | sequential | M05 | ✅ done |
-| M09 | Dashboard & KPIs | 6 | sequential | M08 | 🔄 in progress |
-| M10 | Helpers | 6 | sequential | M08 | 🔄 in progress |
+| M09 | Dashboard & KPIs | 6 | sequential | M08 | ✅ done |
+| M10 | Helpers | 6 | sequential | M08 | ✅ done |
 
 ---
 
