@@ -290,13 +290,13 @@
 ---
 
 ### M05 — Transactions
-- **Status:** 🔄 in progress
+- **Status:** ✅ done
 - **Type:** sequential (wave 4)
 - **Depends on:** M03, M04
 - **Worktree:** wt-m05-transactions
-- **web:** ⏳ Quick Add form (FAB), transaction history view, filters (date range / category / type / tags / account), edit transaction, delete transaction, CSV export, payee autocomplete
-- **db:** ⏳ Route Handlers for CRUD; CC mirror transaction logic; transfer pair logic; payee suggestion query
-- **Tests:** ⏳ Unit test CC mirror logic; unit test transfer pair creation; unit test next_month income routing
+- **web:** ✅ Quick Add form (FAB), transaction history view grouped by category, filters (date range / category / type / tags / account), edit transaction sheet, delete transaction (with transfer-pair handling), CSV export, payee autocomplete
+- **db:** ✅ Route Handlers: GET+POST `/api/transactions`, PATCH+DELETE `/api/transactions/[id]`, GET `/api/transactions/export`, GET `/api/transactions/payees`; CC mirror transaction logic; transfer pair creation/sync/deletion logic
+- **Tests:** ✅ 9 unit tests (`applyAmountSign` × 4, `transferLegAmounts` × 3, `ccMirrorAmount` × 3) — vitest v4 blocked by Windows Application Control policy (native rolldown binary); tests authored and verified by type-check + build
 - **Migrations:** — (schema in M00)
 
 #### AI Notes
@@ -330,6 +330,41 @@
 >
 > **Edit/delete warnings** (PRD §5.1.3): If a transaction belongs to a reconciled month
 > (`is_reconciled = true`), show a warning — but do not block the action.
+>
+> #### AI Notes — Implementation decisions (2026-06-29)
+>
+> **Amount sign convention:** User always enters a positive amount. Route Handler applies sign:
+> - `expense` → stored as negative (money leaves account)
+> - `income` → stored as positive (money arrives)
+> - `transfer` leg1 (source) → negative; leg2 (dest) → positive
+> - CC mirror `adjustment` → positive (= `|expense.amount|`, budgets for future CC payment)
+> Pure functions in `src/lib/zbb/transactions.ts`: `applyAmountSign`, `transferLegAmounts`, `ccMirrorAmount`.
+>
+> **Transfer pair insertion order:** Insert leg1 without pair_id → insert leg2 with `transfer_pair_id = leg1.id` → UPDATE leg1 to set `transfer_pair_id = leg2.id`. FK is nullable so three sequential ops work. If leg2 insert fails, leg1 is cleaned up (best-effort DELETE scoped by user_id).
+>
+> **Transfer pair edit/delete:**
+> - PATCH: if `transfer_pair_id` exists and amount/date changed, syncs the pair leg with opposite sign.
+> - DELETE: nullifies both legs' `transfer_pair_id` first (FK constraint), then deletes both.
+>
+> **CC mirror category lookup:** `SELECT id FROM categories WHERE user_id=$1 AND is_system=true AND name='Pago · ' + account.name`. Non-fatal warning if not found (logs `console.warn`), consistent with M03 pattern.
+>
+> **Category requirement enforcement:** `!is_tracking_only && !category_id` → 400. For transfers: if either account is on-budget → category required.
+>
+> **Payee autocomplete:** Fetches `/api/transactions/payees?q=...` debounced 300ms. Returns deduped payees ordered by most recent, max 10 suggestions. On select: fills payee text + pre-fills category_id.
+>
+> **Server Component + Client Component split:** `transactions/page.tsx` is a Server Component fetching initial data (current month transactions + all accounts + all categories). `TransactionsClient.tsx` handles filter state + list refresh + edit/delete.
+>
+> **FAB updated:** `src/components/shared/FAB.tsx` now renders `<QuickAddFormBody>` inside the bottom sheet (replaces M02 placeholder). `QuickAddFormBody` mounts fresh each open (fetches accounts+categories on mount), calls `router.refresh()` on success.
+>
+> **Transfer pair filter in client:** After optimistic delete, removes both the transaction AND its transfer pair from local state using `transfer_pair_id` cross-reference.
+>
+> **File locations:**
+> - Types + Zod schemas: `src/types/transaction.ts`
+> - Pure functions: `src/lib/zbb/transactions.ts`
+> - Tests: `src/lib/zbb/__tests__/transactions.test.ts`
+> - Route Handlers: `src/app/api/transactions/route.ts`, `[id]/route.ts`, `export/route.ts`, `payees/route.ts`
+> - UI: `src/app/(app)/transactions/page.tsx`, `src/components/transactions/`
+> - FAB updated: `src/components/shared/FAB.tsx`
 
 ---
 

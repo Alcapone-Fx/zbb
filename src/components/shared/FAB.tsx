@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
+import { QuickAddFormBody } from "@/components/transactions/QuickAddFormBody";
 
 export function FAB() {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      {/* FAB button */}
       <button
         onClick={() => setOpen(true)}
         aria-label="Agregar transacción"
@@ -24,7 +24,6 @@ export function FAB() {
         <Plus size={24} color="#fff" strokeWidth={2.5} />
       </button>
 
-      {/* Stub modal — Quick Add form built in M05 */}
       {open && (
         <div
           className="fixed inset-0 z-40 flex items-end"
@@ -32,11 +31,11 @@ export function FAB() {
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full animate-[slideUp_0.32s_cubic-bezier(0.34,1.2,0.64,1)]"
+            className="w-full max-h-[92dvh] overflow-y-auto animate-[slideUp_0.32s_cubic-bezier(0.34,1.2,0.64,1)]"
             style={{
               background: "var(--bg-surface)",
               borderRadius: "24px 24px 0 0",
-              padding: "0 20px 40px",
+              padding: "0 20px 48px",
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -68,17 +67,7 @@ export function FAB() {
               </button>
             </div>
 
-            {/* Placeholder — Quick Add form is implemented in M05 */}
-            <div
-              className="flex items-center justify-center h-40 rounded-2xl text-sm font-semibold"
-              style={{
-                background: "var(--bg-elevated)",
-                color: "var(--text-dim)",
-                border: "1px dashed var(--aB)",
-              }}
-            >
-              Formulario disponible en M05
-            </div>
+            <QuickAddFormBody onClose={() => setOpen(false)} />
           </div>
         </div>
       )}
