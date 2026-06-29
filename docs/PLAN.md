@@ -523,13 +523,13 @@
 ---
 
 ### M09 — Dashboard & KPIs
-- **Status:** 🔄 in progress
+- **Status:** ✅ done
 - **Type:** sequential (wave 6, parallel with M10)
 - **Depends on:** M08
 - **Worktree:** wt-m09-dashboard
-- **web:** ⏳ Dashboard page, period selector (current month / prev month / quarter / year), KPI cards (net income / total expense / savings / net worth), Ideal vs. Real table with traffic-light indicator, Budget Goals settings screen
-- **db:** ⏳ Route Handler for dashboard aggregations per period
-- **Tests:** ⏳ Unit test Ideal vs. Real percentage calculation
+- **web:** ✅ Dashboard page, period selector (current month / prev month / quarter / year), KPI cards (net income / total expense / savings / net worth), Ideal vs. Real table with traffic-light indicator, Budget Goals settings screen
+- **db:** ✅ Route Handler for dashboard aggregations per period
+- **Tests:** ✅ Unit test Ideal vs. Real percentage calculation (11 tests)
 - **Migrations:** — (schema in M00; ideal_percentage in category_groups)
 
 #### AI Notes
@@ -548,6 +548,30 @@
 >
 > **Aggregation query:** A single server-side query grouping transactions by category_group and period.
 > Use a Supabase Route Handler, not client-side computation.
+>
+> #### AI Notes — Implementation decisions (2026-06-29)
+>
+> **Account balance computation**: Balance = sum of all transaction amounts (signed). Opening balance
+> is stored as an `opening_balance` transaction — do NOT add `starting_balance` field separately.
+>
+> **Period date ranges** (pure fn `computePeriodDateRange` in `src/lib/zbb/dashboard.ts`):
+> - `current_month`: YYYY-MM-01 → last day of YYYY-MM
+> - `prev_month`: first/last day of prior month
+> - `quarter`: 3-month window — (m-2)-01 → last day of current month
+> - `year`: YYYY-01-01 → last day of current month
+>
+> **Expense/income filtering**: Only `type = 'income'` counts for net_income; only `type = 'expense'`
+> counts for total_expense and group spending. Transfers, opening_balance, adjustments are excluded.
+>
+> **Files**:
+> - Types: `src/types/dashboard.ts`
+> - Pure fns: `src/lib/zbb/dashboard.ts`
+> - Tests: `src/lib/zbb/__tests__/dashboard.test.ts`
+> - API: `src/app/api/dashboard/route.ts`
+> - UI: `src/components/dashboard/` (DashboardClient, PeriodSelector, KPICard, IdealVsRealTable)
+> - Goals settings: `src/components/settings/GoalsClient.tsx`, `src/app/(app)/settings/goals/page.tsx`
+> - Page: `src/app/(app)/dashboard/page.tsx`
+> - Settings page: `src/app/(app)/settings/page.tsx` (updated with Goals link)
 
 ---
 
