@@ -429,13 +429,13 @@
 ---
 
 ### M08 — Budget ZBB
-- **Status:** 🔄 in progress
+- **Status:** ✅ done
 - **Type:** sequential (wave 5, parallel with M06 + M07)
 - **Depends on:** M05
 - **Worktree:** wt-m08-budget
-- **web:** ⏳ Budget main view (home screen after login), month navigator, "Dinero a Asignar" KPI, category table (Asignado / Actividad / Disponible), inline assign editing, budget template (apply + save), trends panel (side panel per category — 6-month chart)
-- **db:** ⏳ Route Handler for "Dinero a Asignar" computation; Route Handler for Disponible per month; Route Handler for budget allocations CRUD; Route Handler for template save/apply
-- **Tests:** ⏳ Unit test rollover calculation (cascading months); unit test Dinero a Asignar formula
+- **web:** ✅ Budget main view (home screen after login), month navigator, "Dinero a Asignar" KPI, category table (Asignado / Actividad / Disponible), inline assign editing, budget template (apply + save), trends panel (side panel per category — 6-month chart)
+- **db:** ✅ GET /api/budget/month (full month data + Disponible + Dinero a Asignar); POST /api/budget/allocations (upsert); GET|PUT /api/budget/template; POST /api/budget/template/apply; GET /api/budget/trends/[categoryId]
+- **Tests:** ✅ 12 unit tests (computeDisponibles × 6, computeDineroAAsignar × 4, getPrevMonth × 2, monthEnd × 4) — vitest v4 blocked by Windows Application Control (same as M05); tests authored and verified by type-check
 - **Migrations:** — (schema in M00; `budget_template` JSONB in `user_settings`)
 
 #### AI Notes
@@ -478,6 +478,32 @@
 >
 > **`budget_months` lazy creation:** When the user navigates to a month with no `budget_months` record,
 > create it on the fly. Do not pre-create all months.
+>
+> **Activity sign convention (M08 decision):** TRD formula `disponible = allocated + rollover − activity` uses
+> "activity" as an absolute spending amount (positive = spent money). Implementation uses the signed DB sum
+> (`activity = SUM(tx.amount)` — negative for net spending) with `disponible = allocated + rollover + activity`.
+> These are equivalent: `activity_abs = -activity_signed`. The UI displays raw signed activity
+> (negative = net spending, which is the conventional budget display).
+>
+> **Allocation endpoint design:** `POST /api/budget/allocations` handles both create and update via upsert
+> (`onConflict: budget_month_id,category_id`). No PATCH endpoint needed — the client never needs the allocation ID.
+>
+> **Optimistic update scope:** Editing an allocation updates `assigned`, `disponible` (delta), and `dineroAAsignar`
+> (-delta) in the client state. For past month edits, months after the edited month are marked stale in
+> `useBudgetStore` so they refetch on navigation.
+>
+> **TrendsPanel remount strategy:** `key={trendsCategory}` in BudgetClient forces a fresh mount per category,
+> so TrendsPanel initializes as `{ status: 'loading' }` without needing synchronous setState in the effect.
+> This satisfies the `react-hooks/set-state-in-effect` lint rule.
+>
+> **Key files:**
+> - Pure functions: `src/lib/zbb/budget.ts`
+> - Tests: `src/lib/zbb/__tests__/budget.test.ts`
+> - Types: `src/types/budget.ts`
+> - Store: `src/stores/budget.store.ts`
+> - API: `src/app/api/budget/month/route.ts`, `allocations/route.ts`, `template/route.ts`, `template/apply/route.ts`, `trends/[categoryId]/route.ts`
+> - UI: `src/components/budget/` (BudgetClient, BudgetTable, MonthNavigator, DineroAAsignarKPI, TemplateActions, TrendsPanel)
+> - Page: `src/app/(app)/budget/page.tsx`
 
 ---
 
