@@ -9,7 +9,7 @@
 ## General status
 
 - **Phase:** development
-- **Last update:** 2026-06-28 by /next-wave (wave 4 launched)
+- **Last update:** 2026-06-29 by /next-wave (wave 5 launched)
 - **Main builds:** ✅ (Next.js 16.2.9, 2026-06-28)
 - **Tests on main:** —
 
@@ -24,10 +24,10 @@
 | M02 | App Shell, Navigation & PWA | 2 | sequential | M00 | ✅ done |
 | M03 | Account Management | 3 | sequential | M01, M02 | ✅ done |
 | M04 | Categories & Groups | 3 | sequential | M01, M02 | ✅ done |
-| M05 | Transactions | 4 | sequential | M03, M04 | 🔄 in progress |
-| M06 | Scheduled Transactions | 5 | sequential | M05 | ⏳ pending |
-| M07 | Bank Reconciliation | 5 | sequential | M05 | ⏳ pending |
-| M08 | Budget ZBB | 5 | sequential | M05 | ⏳ pending |
+| M05 | Transactions | 4 | sequential | M03, M04 | ✅ done |
+| M06 | Scheduled Transactions | 5 | sequential | M05 | 🔄 in progress |
+| M07 | Bank Reconciliation | 5 | sequential | M05 | 🔄 in progress |
+| M08 | Budget ZBB | 5 | sequential | M05 | 🔄 in progress |
 | M09 | Dashboard & KPIs | 6 | sequential | M08 | ⏳ pending |
 | M10 | Helpers | 6 | sequential | M08 | ⏳ pending |
 
@@ -369,10 +369,10 @@
 ---
 
 ### M06 — Scheduled Transactions
-- **Status:** ⏳ pending
+- **Status:** 🔄 in progress
 - **Type:** sequential (wave 5, parallel with M07 + M08)
 - **Depends on:** M05
-- **Worktree:** —
+- **Worktree:** wt-m06-scheduled
 - **web:** ⏳ "Make recurring" checkbox in transaction form, pending transactions panel (intercepts login), management view (list, edit, pause, delete), confirm/edit/skip actions
 - **db:** ⏳ Route Handler to fetch due scheduled transactions; Route Handler to confirm/skip; cron or scheduled function to advance `next_due_date`
 - **Tests:** ⏳ Unit test `next_due_date` advancement logic per frequency
@@ -402,10 +402,10 @@
 ---
 
 ### M07 — Bank Reconciliation
-- **Status:** ⏳ pending
+- **Status:** 🔄 in progress
 - **Type:** sequential (wave 5, parallel with M06 + M08)
 - **Depends on:** M05
-- **Worktree:** —
+- **Worktree:** wt-m07-reconciliation
 - **web:** ⏳ Reconciliation screen per account (accessible from account detail), bank balance input, difference display, one-click adjustment transaction creation, reconciled transaction indicators
 - **db:** ⏳ Route Handlers for reconciliation record CRUD; mark transactions as reconciled
 - **Tests:** ⏳ Unit test adjustment amount calculation
@@ -429,10 +429,10 @@
 ---
 
 ### M08 — Budget ZBB
-- **Status:** ⏳ pending
+- **Status:** 🔄 in progress
 - **Type:** sequential (wave 5, parallel with M06 + M07)
 - **Depends on:** M05
-- **Worktree:** —
+- **Worktree:** wt-m08-budget
 - **web:** ⏳ Budget main view (home screen after login), month navigator, "Dinero a Asignar" KPI, category table (Asignado / Actividad / Disponible), inline assign editing, budget template (apply + save), trends panel (side panel per category — 6-month chart)
 - **db:** ⏳ Route Handler for "Dinero a Asignar" computation; Route Handler for Disponible per month; Route Handler for budget allocations CRUD; Route Handler for template save/apply
 - **Tests:** ⏳ Unit test rollover calculation (cascading months); unit test Dinero a Asignar formula
