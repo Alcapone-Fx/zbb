@@ -93,7 +93,7 @@ export function AccountCard({ account, isOffBudget, onEdit, onArchive, onReconci
       onClick={() => setMenuOpen((o) => !o)}
     >
       <div
-        className="flex items-center justify-center w-[38px] h-[38px] shrink-0"
+        className="flex items-center justify-center w-11 h-11 shrink-0"
         style={{
           background: iconBg,
           borderRadius: isOffBudget ? "50%" : "11px",
