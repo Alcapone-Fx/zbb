@@ -18,15 +18,21 @@ export function FeedbackProvider() {
     if (isCapturingRef.current) return;
     isCapturingRef.current = true;
     try {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
       const dataUrl = await toPng(document.body, {
         pixelRatio: 1,
         cacheBust: true,
-        // Skip elements that can't be serialized cross-origin
+        width: w,
+        height: h,
+        style: {
+          width: `${w}px`,
+          height: `${h}px`,
+          overflow: "hidden",
+        },
         filter: (node) => {
           if (node instanceof HTMLElement) {
-            const tag = node.tagName.toLowerCase();
-            // Skip script tags and the feedback widget itself
-            if (tag === "script") return false;
+            if (node.tagName.toLowerCase() === "script") return false;
             if (node.dataset.feedbackWidget === "true") return false;
           }
           return true;
