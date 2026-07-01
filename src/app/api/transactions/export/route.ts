@@ -76,6 +76,10 @@ export async function GET(req: Request) {
 }
 
 function csvEscape(value: string): string {
+  // Neutralize spreadsheet formula injection prefixes
+  if (/^[=+\-@\t\r]/.test(value)) {
+    value = `'${value}`
+  }
   if (value.includes(',') || value.includes('"') || value.includes('\n')) {
     return `"${value.replace(/"/g, '""')}"`
   }

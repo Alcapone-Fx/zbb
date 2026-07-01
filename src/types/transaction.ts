@@ -84,7 +84,7 @@ export const transactionFiltersSchema = z.object({
     .optional(),
   category_id: z.string().uuid().optional(),
   account_id: z.string().uuid().optional(),
-  tag: z.string().optional(),
+  tag: z.string().max(50).optional(),
 })
 
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>
