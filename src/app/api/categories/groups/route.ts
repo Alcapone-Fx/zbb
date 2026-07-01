@@ -11,7 +11,7 @@ export async function GET() {
 
   const { data: groups, error: groupsError } = await supabase
     .from('category_groups')
-    .select('*')
+    .select('id, name, is_system, is_archived, display_order, ideal_percentage')
     .eq('user_id', user.id)
     .order('display_order', { ascending: true })
 
@@ -19,7 +19,7 @@ export async function GET() {
 
   const { data: categories, error: catsError } = await supabase
     .from('categories')
-    .select('*')
+    .select('id, group_id, name, is_system, is_archived, display_order')
     .eq('user_id', user.id)
     .order('display_order', { ascending: true })
 
@@ -40,7 +40,12 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json()
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Cuerpo de solicitud inválido' }, { status: 400 })
+  }
   const parsed = createGroupSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
