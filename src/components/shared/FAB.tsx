@@ -14,8 +14,8 @@ export function FAB() {
         aria-label="Agregar transacción"
         className="fixed z-30 flex items-center justify-center w-14 h-14 transition-transform hover:scale-[1.07] active:scale-95"
         style={{
-          bottom: "82px",
-          right: "20px",
+          bottom: "calc(82px + env(safe-area-inset-bottom, 0px))",
+          right: "max(20px, env(safe-area-inset-right, 20px))",
           background: "var(--ac)",
           borderRadius: "18px",
           boxShadow: "0 4px 28px var(--a-shadow)",

@@ -18,10 +18,12 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 h-16 z-20 flex items-center px-1"
+      className="fixed bottom-0 left-0 right-0 z-20 flex items-center px-1"
       style={{
         background: "var(--bg-surface)",
         borderTop: "1px solid rgba(255,255,255,0.08)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        height: "calc(4rem + env(safe-area-inset-bottom, 0px))",
       }}
       aria-label="Navegación principal"
     >
@@ -32,7 +34,7 @@ export function BottomNav() {
             key={href}
             href={href}
             className={cn(
-              "flex flex-1 flex-col items-center gap-[3px] py-2 px-1 text-[10px] font-bold uppercase tracking-[0.5px] transition-colors",
+              "flex flex-1 flex-col items-center gap-[3px] pt-2 pb-1 px-1 text-[10px] font-bold uppercase tracking-[0.5px] transition-colors",
               active ? "text-[var(--ac)]" : "text-[var(--text-dim)]"
             )}
             aria-current={active ? "page" : undefined}
