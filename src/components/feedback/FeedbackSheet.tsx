@@ -323,7 +323,7 @@ export function FeedbackSheet() {
               <button
                 onClick={() => setStep("form")}
                 className="flex-[2] py-3 rounded-2xl text-sm font-bold transition-opacity"
-                style={{ background: "var(--ac)", color: "var(--aB)" }}
+                style={{ background: "var(--ac)", color: "#fff" }}
               >
                 Continuar →
               </button>
@@ -360,7 +360,7 @@ export function FeedbackSheet() {
                           : "var(--bg-elevated)",
                       color:
                         feedbackType === value
-                          ? "var(--aB)"
+                          ? "#fff"
                           : "var(--text-sub)",
                     }}
                   >
@@ -438,7 +438,7 @@ export function FeedbackSheet() {
               className="w-full py-3.5 rounded-2xl text-sm font-bold transition-opacity"
               style={{
                 background: "var(--ac)",
-                color: "var(--aB)",
+                color: "#fff",
                 opacity:
                   submitting || !title.trim() || !description.trim() ? 0.55 : 1,
               }}

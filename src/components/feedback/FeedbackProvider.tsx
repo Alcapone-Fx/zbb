@@ -18,15 +18,19 @@ export function FeedbackProvider() {
     if (isCapturingRef.current) return;
     isCapturingRef.current = true;
     try {
-      const canvas = await html2canvas(document.documentElement, {
+      const canvas = await html2canvas(document.body, {
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false,
         logging: false,
         scale: 1,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        windowWidth: document.documentElement.clientWidth,
+        windowHeight: document.documentElement.clientHeight,
       });
       open(canvas.toDataURL("image/png"));
-    } catch {
-      // Screenshot failed — open widget without image
+    } catch (err) {
+      console.error("[Feedback] html2canvas failed:", err);
       open(null);
     } finally {
       isCapturingRef.current = false;
