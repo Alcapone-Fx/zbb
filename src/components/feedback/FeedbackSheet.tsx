@@ -101,7 +101,7 @@ export function FeedbackSheet() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col justify-end">
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end" data-feedback-widget="true">
       {/* Overlay */}
       <div
         className="absolute inset-0"

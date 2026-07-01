@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import { useFeedbackStore } from "@/stores/feedback.store";
 import { useShakeDetection } from "@/hooks/use-shake-detection";
 import { useErrorCapture } from "@/hooks/use-error-capture";
@@ -18,19 +18,23 @@ export function FeedbackProvider() {
     if (isCapturingRef.current) return;
     isCapturingRef.current = true;
     try {
-      const canvas = await html2canvas(document.body, {
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        scale: 1,
-        scrollX: 0,
-        scrollY: -window.scrollY,
-        windowWidth: document.documentElement.clientWidth,
-        windowHeight: document.documentElement.clientHeight,
+      const dataUrl = await toPng(document.body, {
+        pixelRatio: 1,
+        cacheBust: true,
+        // Skip elements that can't be serialized cross-origin
+        filter: (node) => {
+          if (node instanceof HTMLElement) {
+            const tag = node.tagName.toLowerCase();
+            // Skip script tags and the feedback widget itself
+            if (tag === "script") return false;
+            if (node.dataset.feedbackWidget === "true") return false;
+          }
+          return true;
+        },
       });
-      open(canvas.toDataURL("image/png"));
+      open(dataUrl);
     } catch (err) {
-      console.error("[Feedback] html2canvas failed:", err);
+      console.error("[Feedback] screenshot failed:", err);
       open(null);
     } finally {
       isCapturingRef.current = false;
@@ -70,6 +74,7 @@ export function FeedbackProvider() {
       {/* iOS permission toast */}
       {iosToastVisible && (
         <div
+          data-feedback-widget="true"
           className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg cursor-pointer select-none"
           style={{
             background: "var(--bg-elevated)",
