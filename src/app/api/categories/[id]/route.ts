@@ -24,7 +24,12 @@ export async function PATCH(
   if (category.is_system)
     return NextResponse.json({ error: 'Cannot modify system category' }, { status: 403 })
 
-  const body = await request.json()
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Cuerpo de solicitud inválido' }, { status: 400 })
+  }
   const parsed = updateCategorySchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })

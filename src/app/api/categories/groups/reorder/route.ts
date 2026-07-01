@@ -9,7 +9,12 @@ export async function PATCH(request: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await request.json()
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Cuerpo de solicitud inválido' }, { status: 400 })
+  }
   const parsed = reorderGroupsSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
