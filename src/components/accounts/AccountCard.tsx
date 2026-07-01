@@ -8,20 +8,28 @@ import {
   Banknote,
   TrendingUp,
   Landmark,
-  MoreVertical,
   Pencil,
   Archive,
   CheckCircle2,
 } from "lucide-react";
 import type { AccountWithBalance, AccountType } from "@/types/account";
 
-const TYPE_ICONS: Record<AccountType, React.FC<{ size: number; strokeWidth: number }>> = {
-  checking: (p) => <Building2 {...p} />,
-  savings: (p) => <PiggyBank {...p} />,
+const TYPE_ICONS: Record<AccountType, React.FC<{ size: number; strokeWidth: number; color?: string }>> = {
+  checking:    (p) => <Building2 {...p} />,
+  savings:     (p) => <PiggyBank {...p} />,
   credit_card: (p) => <CreditCard {...p} />,
-  cash: (p) => <Banknote {...p} />,
-  investment: (p) => <TrendingUp {...p} />,
-  liability: (p) => <Landmark {...p} />,
+  cash:        (p) => <Banknote {...p} />,
+  investment:  (p) => <TrendingUp {...p} />,
+  liability:   (p) => <Landmark {...p} />,
+};
+
+const TYPE_LABELS: Record<AccountType, string> = {
+  checking:    "Corriente",
+  savings:     "Ahorro",
+  credit_card: "Tarjeta de Crédito",
+  cash:        "Efectivo",
+  investment:  "Inversión",
+  liability:   "Deuda",
 };
 
 function formatCurrency(amount: number): string {
@@ -35,19 +43,23 @@ function formatCurrency(amount: number): string {
 
 interface Props {
   account: AccountWithBalance;
+  isOffBudget?: boolean;
   onEdit: (account: AccountWithBalance) => void;
   onArchive: (account: AccountWithBalance) => void;
   onReconcile: (account: AccountWithBalance) => void;
   archiving: boolean;
 }
 
-export function AccountCard({ account, onEdit, onArchive, onReconcile, archiving }: Props) {
+export function AccountCard({ account, isOffBudget, onEdit, onArchive, onReconcile, archiving }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const Icon = TYPE_ICONS[account.type];
 
   const isNegative =
     account.type === "liability" ? account.balance > 0 : account.balance < 0;
+
+  const displayBalance =
+    account.type === "liability" ? -account.balance : account.balance;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -60,84 +72,94 @@ export function AccountCard({ account, onEdit, onArchive, onReconcile, archiving
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
 
-  const displayBalance =
-    account.type === "liability" ? -account.balance : account.balance;
+  const iconBg = isOffBudget
+    ? "rgba(52,211,153,0.08)"
+    : "var(--ab)";
+  const iconColor = isOffBudget ? "#34D399" : "var(--ac)";
+
+  const rowPadding = isOffBudget
+    ? "14px 0"
+    : "13px 18px";
+
+  const borderBottom = isOffBudget
+    ? "1px solid rgba(255,255,255,0.06)"
+    : "1px solid rgba(255,255,255,0.05)";
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3"
-      style={{ borderBottom: "1px solid var(--border-row)" }}
+      ref={menuRef}
+      className="relative flex items-center gap-3 cursor-pointer"
+      style={{ padding: rowPadding, borderBottom }}
+      onClick={() => setMenuOpen((o) => !o)}
     >
       <div
-        className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
-        style={{ background: "var(--bg-elevated)" }}
+        className="flex items-center justify-center w-[38px] h-[38px] shrink-0"
+        style={{
+          background: iconBg,
+          borderRadius: isOffBudget ? "50%" : "11px",
+        }}
       >
-        <Icon size={16} strokeWidth={1.8} />
+        <Icon size={16} strokeWidth={1.8} color={iconColor} />
       </div>
 
       <div className="flex-1 min-w-0">
         <p
-          className="text-sm font-semibold truncate"
+          className="text-sm font-bold truncate"
           style={{ color: "var(--text-main)" }}
         >
           {account.name}
+        </p>
+        <p
+          className="text-xs mt-0.5"
+          style={{ color: "var(--text-dim)" }}
+        >
+          {TYPE_LABELS[account.type]}
         </p>
       </div>
 
       <span
         className="text-sm font-bold tabular-nums shrink-0"
-        style={{ color: isNegative ? "var(--color-negative)" : "var(--text-main)" }}
+        style={{ color: isNegative ? "var(--color-negative)" : "var(--color-positive)" }}
       >
-        {isNegative && account.type !== "liability" ? "" : ""}
         {formatCurrency(displayBalance)}
       </span>
 
-      <div className="relative shrink-0" ref={menuRef}>
-        <button
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-label="Opciones de cuenta"
-          className="flex items-center justify-center w-8 h-8 rounded-xl transition-colors"
-          style={{ color: "var(--text-dim)" }}
+      {menuOpen && (
+        <div
+          className="absolute right-0 top-full z-50 rounded-xl py-1 w-44 shadow-lg"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border-card)",
+          }}
+          onClick={(e) => e.stopPropagation()}
         >
-          <MoreVertical size={16} />
-        </button>
-
-        {menuOpen && (
-          <div
-            className="absolute right-0 top-9 z-50 rounded-xl py-1 w-44 shadow-lg"
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--border-card)",
-            }}
+          <button
+            onClick={() => { setMenuOpen(false); onEdit(account); }}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-opacity hover:opacity-70"
+            style={{ color: "var(--text-sub)" }}
           >
-            <button
-              onClick={() => { setMenuOpen(false); onEdit(account); }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors"
-              style={{ color: "var(--text-sub)" }}
-            >
-              <Pencil size={14} />
-              Editar nombre
-            </button>
-            <button
-              onClick={() => { setMenuOpen(false); onReconcile(account); }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors"
-              style={{ color: "var(--text-sub)" }}
-            >
-              <CheckCircle2 size={14} />
-              Conciliar
-            </button>
-            <button
-              onClick={() => { setMenuOpen(false); onArchive(account); }}
-              disabled={archiving}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors disabled:opacity-50"
-              style={{ color: "var(--text-sub)" }}
-            >
-              <Archive size={14} />
-              Archivar
-            </button>
-          </div>
-        )}
-      </div>
+            <Pencil size={14} />
+            Editar nombre
+          </button>
+          <button
+            onClick={() => { setMenuOpen(false); onReconcile(account); }}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-opacity hover:opacity-70"
+            style={{ color: "var(--text-sub)" }}
+          >
+            <CheckCircle2 size={14} />
+            Conciliar
+          </button>
+          <button
+            onClick={() => { setMenuOpen(false); onArchive(account); }}
+            disabled={archiving}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40"
+            style={{ color: "var(--text-sub)" }}
+          >
+            <Archive size={14} />
+            Archivar
+          </button>
+        </div>
+      )}
     </div>
   );
 }

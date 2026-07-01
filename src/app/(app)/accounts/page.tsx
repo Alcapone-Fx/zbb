@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { X } from "lucide-react";
 import type { AccountWithBalance, AccountsResponse } from "@/types/account";
 import { AccountGroup } from "@/components/accounts/AccountGroup";
 import { CreateAccountModal } from "@/components/accounts/CreateAccountModal";
 import { EditAccountModal } from "@/components/accounts/EditAccountModal";
 import { ReconciliationSheet } from "@/components/accounts/ReconciliationSheet";
-import { X } from "lucide-react";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-419", {
@@ -17,11 +18,20 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-function groupTotal(accounts: AccountWithBalance[]): number {
-  return accounts.reduce((sum, a) => {
-    if (a.type === "liability") return sum - a.balance;
-    return sum + a.balance;
-  }, 0);
+function computeMiniStats(data: AccountsResponse) {
+  const onBudgetTotal = data.on_budget.reduce((s, a) =>
+    a.type === "liability" ? s - a.balance : s + a.balance, 0);
+
+  const activos = data.off_budget.reduce((s, a) =>
+    a.type !== "liability" ? s + a.balance : s, 0);
+
+  const deudasOnBudget = data.on_budget.reduce((s, a) =>
+    a.balance < 0 ? s + a.balance : s, 0);
+  const deudasOffBudget = data.off_budget.reduce((s, a) =>
+    a.type === "liability" ? s - a.balance : s, 0);
+  const deudas = deudasOnBudget + deudasOffBudget;
+
+  return { onBudgetTotal, activos, deudas };
 }
 
 export default function AccountsPage() {
@@ -59,12 +69,6 @@ export default function AccountsPage() {
     fetchAccounts();
   }, [fetchAccounts]);
 
-  function openCreateForGroup(trackingOnly: boolean) {
-    setCreateTrackingOnly(trackingOnly);
-    setArchiveError(null);
-    setCreateOpen(true);
-  }
-
   async function handleArchive(account: AccountWithBalance) {
     setArchiveError(null);
     setArchivingId(account.id);
@@ -89,14 +93,13 @@ export default function AccountsPage() {
 
   const netWorth = data?.net_worth ?? 0;
   const netWorthNegative = netWorth < 0;
+  const stats = data ? computeMiniStats(data) : null;
 
   if (loading) {
     return (
       <div
         className="px-5 pt-14 pb-6 min-h-screen"
-        style={{
-          background: "linear-gradient(180deg, #162240 0%, var(--bg-app) 100%)",
-        }}
+        style={{ background: "linear-gradient(180deg, #162240 0%, var(--bg-app) 100%)" }}
       >
         <div className="flex flex-col gap-3 mt-6">
           {[1, 2, 3].map((i) => (
@@ -113,32 +116,86 @@ export default function AccountsPage() {
 
   return (
     <>
-      {/* Header */}
+      {/* ── Header ── */}
       <div
         className="px-5 pt-14 pb-5"
-        style={{
-          background: "linear-gradient(180deg, #162240 0%, var(--bg-app) 100%)",
-        }}
+        style={{ background: "linear-gradient(180deg, #162240 0%, var(--bg-app) 100%)" }}
       >
         <h1
-          className="text-[22px] font-extrabold tracking-[-0.5px]"
-          style={{ color: "var(--text-main)" }}
+          className="font-extrabold"
+          style={{ fontSize: "22px", letterSpacing: "-0.5px", color: "var(--text-main)" }}
         >
           Cuentas
         </h1>
 
+        {/* Patrimonio Neto */}
         <div className="mt-3">
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--text-dim)" }}>
+          <p
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.8px",
+              color: "var(--text-dim)",
+              textTransform: "uppercase",
+            }}
+          >
             Patrimonio Neto
           </p>
           <p
-            className="text-3xl font-extrabold tracking-tight mt-0.5"
-            style={{ color: netWorthNegative ? "var(--color-negative)" : "var(--color-positive)" }}
+            className="tabular-nums"
+            style={{
+              fontSize: "40px",
+              fontWeight: 800,
+              letterSpacing: "-2px",
+              lineHeight: 1.1,
+              marginTop: "2px",
+              color: netWorthNegative ? "var(--color-negative)" : "var(--text-main)",
+            }}
           >
             {formatCurrency(netWorth)}
           </p>
         </div>
 
+        {/* Mini-stats row */}
+        {stats && (
+          <div
+            className="flex mt-3"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px", gap: "0" }}
+          >
+            <div className="flex-1">
+              <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-dim)", letterSpacing: "0.4px", textTransform: "uppercase" }}>
+                On-Budget
+              </p>
+              <p className="tabular-nums" style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-main)", marginTop: "2px" }}>
+                {formatCurrency(stats.onBudgetTotal)}
+              </p>
+            </div>
+            <div
+              className="flex-1"
+              style={{ borderLeft: "1px solid rgba(255,255,255,0.06)", paddingLeft: "14px" }}
+            >
+              <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-dim)", letterSpacing: "0.4px", textTransform: "uppercase" }}>
+                Activos
+              </p>
+              <p className="tabular-nums" style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-positive)", marginTop: "2px" }}>
+                {formatCurrency(stats.activos)}
+              </p>
+            </div>
+            <div
+              className="flex-1"
+              style={{ borderLeft: "1px solid rgba(255,255,255,0.06)", paddingLeft: "14px" }}
+            >
+              <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-dim)", letterSpacing: "0.4px", textTransform: "uppercase" }}>
+                Deudas
+              </p>
+              <p className="tabular-nums" style={{ fontSize: "13px", fontWeight: 700, color: stats.deudas < 0 ? "var(--color-negative)" : "var(--text-dim)", marginTop: "2px" }}>
+                {formatCurrency(stats.deudas)}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Error banners */}
         {apiError && (
           <div
             className="mt-3 px-4 py-2.5 rounded-xl text-sm"
@@ -147,7 +204,6 @@ export default function AccountsPage() {
             {apiError}
           </div>
         )}
-
         {archiveError && (
           <div
             className="mt-3 px-4 py-2.5 rounded-xl text-sm"
@@ -158,29 +214,65 @@ export default function AccountsPage() {
         )}
       </div>
 
-      {/* Account groups */}
-      <div className="pt-2 pb-6">
+      {/* ── Account groups ── */}
+      <div className="pt-4 pb-4">
         <AccountGroup
-          title="En Presupuesto"
-          totalLabel={formatCurrency(groupTotal(data?.on_budget ?? []))}
+          title="On-Budget"
+          totalLabel={formatCurrency(
+            (data?.on_budget ?? []).reduce((s, a) =>
+              a.type === "liability" ? s - a.balance : s + a.balance, 0)
+          )}
           accounts={data?.on_budget ?? []}
           archivingId={archivingId}
           onEdit={setEditTarget}
           onArchive={handleArchive}
           onReconcile={setReconcileTarget}
-          onAdd={() => openCreateForGroup(false)}
         />
 
         <AccountGroup
-          title="Seguimiento"
-          totalLabel={formatCurrency(groupTotal(data?.off_budget ?? []))}
+          title="Off-Budget / Patrimonio"
+          totalLabel={formatCurrency(
+            (data?.off_budget ?? []).reduce((s, a) =>
+              a.type === "liability" ? s - a.balance : s + a.balance, 0)
+          )}
           accounts={data?.off_budget ?? []}
+          isOffBudget
           archivingId={archivingId}
           onEdit={setEditTarget}
           onArchive={handleArchive}
           onReconcile={setReconcileTarget}
-          onAdd={() => openCreateForGroup(true)}
         />
+      </div>
+
+      {/* ── Footer actions ── */}
+      <div className="px-5 pb-8 flex flex-col gap-3">
+        <Link
+          href="/transactions"
+          className="flex items-center justify-center w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-80"
+          style={{
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-card)",
+            color: "var(--text-sub)",
+          }}
+        >
+          Ver historial de transacciones →
+        </Link>
+
+        <button
+          onClick={() => {
+            setCreateTrackingOnly(false);
+            setArchiveError(null);
+            setCreateOpen(true);
+          }}
+          className="flex items-center justify-center w-full py-3.5 rounded-2xl text-sm font-bold transition-opacity hover:opacity-80"
+          style={{
+            background: "var(--ab)",
+            border: "1px dashed var(--aB)",
+            color: "var(--ac)",
+          }}
+        >
+          + Agregar cuenta
+        </button>
       </div>
 
       <CreateAccountModal
