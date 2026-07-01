@@ -36,19 +36,28 @@ interface Props {
   color: string;
   onStrokesChange?: (count: number) => void;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
-  ({ screenshot, mode, color, onStrokesChange, className }, ref) => {
+  ({ screenshot, mode, color, onStrokesChange, className, style }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const strokesRef = useRef<Stroke[]>([]);
     const currentStrokeRef = useRef<Point[]>([]);
     const isDrawingRef = useRef(false);
     const imgRef = useRef<HTMLImageElement | null>(null);
     const [imgSize, setImgSize] = useState({ w: 800, h: 600 });
-    // Trigger re-render for undo/clear
     const [, tick] = useState(0);
 
+    // Keep prop refs in sync so event listeners (added once) always see current values
+    const modeRef = useRef(mode);
+    const colorRef = useRef(color);
+    const onStrokesChangeRef = useRef(onStrokesChange);
+    useEffect(() => { modeRef.current = mode; }, [mode]);
+    useEffect(() => { colorRef.current = color; }, [color]);
+    useEffect(() => { onStrokesChangeRef.current = onStrokesChange; }, [onStrokesChange]);
+
+    // redraw reads from refs — no deps, stable identity
     const redraw = useCallback(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -61,7 +70,10 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
         ctx.drawImage(imgRef.current, 0, 0, canvas.width, canvas.height);
       }
 
-      const renderStroke = (points: Point[], stroke: Stroke | { color: string; width: number; mode: DrawMode }) => {
+      const renderStroke = (
+        points: Point[],
+        stroke: { color: string; width: number; mode: DrawMode }
+      ) => {
         if (points.length < 2) return;
         ctx.save();
         if (stroke.mode === "eraser") {
@@ -87,15 +99,17 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
         renderStroke(stroke.points, stroke);
       }
 
+      // Preview the in-progress stroke using current ref values
       if (currentStrokeRef.current.length >= 2) {
         renderStroke(currentStrokeRef.current, {
-          color,
-          width: mode === "eraser" ? 20 : 3,
-          mode,
+          color: colorRef.current,
+          width: modeRef.current === "eraser" ? 20 : 3,
+          mode: modeRef.current,
         });
       }
-    }, [color, mode]);
+    }, []); // stable — never recreated
 
+    // Load screenshot
     useEffect(() => {
       const img = new Image();
       img.onload = () => {
@@ -105,6 +119,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
       img.src = screenshot;
     }, [screenshot]);
 
+    // Resize canvas when image loads, then redraw
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -113,10 +128,12 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
       redraw();
     }, [imgSize, redraw]);
 
+    // Redraw when mode/color change (to update in-progress preview color)
     useEffect(() => {
       redraw();
-    }, [redraw]);
+    }, [mode, color, redraw]);
 
+    // Pointer events — added ONCE, read current values via refs
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -149,11 +166,11 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
         if (currentStrokeRef.current.length > 1) {
           strokesRef.current.push({
             points: [...currentStrokeRef.current],
-            color,
-            width: mode === "eraser" ? 20 : 3,
-            mode,
+            color: colorRef.current,
+            width: modeRef.current === "eraser" ? 20 : 3,
+            mode: modeRef.current,
           });
-          onStrokesChange?.(strokesRef.current.length);
+          onStrokesChangeRef.current?.(strokesRef.current.length);
         }
         currentStrokeRef.current = [];
         redraw();
@@ -171,7 +188,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
         canvas.removeEventListener("pointerup", onUp);
         canvas.removeEventListener("pointercancel", onUp);
       };
-    }, [mode, color, redraw, onStrokesChange]);
+    }, []); // stable — added once on mount, removed on unmount
 
     useImperativeHandle(ref, () => ({
       getCompositeImage: () => canvasRef.current?.toDataURL("image/png") ?? "",
@@ -179,17 +196,17 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
       undo: () => {
         strokesRef.current.pop();
         redraw();
-        onStrokesChange?.(strokesRef.current.length);
+        onStrokesChangeRef.current?.(strokesRef.current.length);
         tick((n) => n + 1);
       },
       clear: () => {
         strokesRef.current = [];
         currentStrokeRef.current = [];
         redraw();
-        onStrokesChange?.(0);
+        onStrokesChangeRef.current?.(0);
         tick((n) => n + 1);
       },
-    }));
+    }), []); // stable — redraw and refs never change
 
     return (
       <canvas
@@ -201,6 +218,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
           display: "block",
           width: "100%",
           height: "auto",
+          ...style,
         }}
       />
     );

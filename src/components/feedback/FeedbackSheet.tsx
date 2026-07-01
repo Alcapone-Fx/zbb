@@ -178,12 +178,8 @@ export function FeedbackSheet() {
                     Dibuja para marcar el área del problema (opcional)
                   </p>
                   <div
-                    className="rounded-xl overflow-hidden border"
-                    style={{
-                      borderColor: "var(--border-card)",
-                      maxHeight: "48dvh",
-                      overflowY: "hidden",
-                    }}
+                    className="rounded-xl overflow-hidden border flex items-center justify-center"
+                    style={{ borderColor: "var(--border-card)" }}
                   >
                     <AnnotationCanvas
                       ref={canvasRef}
@@ -191,6 +187,14 @@ export function FeedbackSheet() {
                       mode={drawMode}
                       color={color}
                       onStrokesChange={setStrokeCount}
+                      style={{
+                        // Scale screenshot to fit the sheet: shrink if too wide OR too tall.
+                        // 94dvh = sheet max-height; subtract ~240px for header + hint + toolbar + buttons.
+                        maxWidth: "100%",
+                        maxHeight: "calc(94dvh - 240px)",
+                        width: "auto",
+                        height: "auto",
+                      }}
                     />
                   </div>
                 </div>
