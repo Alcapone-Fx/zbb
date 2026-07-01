@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/shared/Sidebar";
 import { FAB } from "@/components/shared/FAB";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { PendingTransactionsPanel } from "@/components/shared/PendingTransactionsPanel";
+import { FeedbackProvider } from "@/components/feedback/FeedbackProvider";
 import type { ScheduledTransaction } from "@/types/scheduled-transaction";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -73,6 +74,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onClose={() => setPendingOpen(false)}
         onAllDone={handleAllDone}
       />
+
+      {/* Feedback widget — shake to report / Ctrl+Shift+F on desktop */}
+      <FeedbackProvider />
     </>
   );
 }
