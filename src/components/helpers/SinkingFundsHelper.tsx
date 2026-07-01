@@ -52,7 +52,9 @@ export function SinkingFundsHelper() {
     let cancelled = false
     Promise.all([
       fetch('/api/helpers/sinking-funds').then((r) => r.json()),
-      fetch(`/api/budget/month?month=${month}`).then((r) => r.json()),
+      fetch(`/api/budget/month?month=${month}`, { method: 'POST' })
+        .then(() => fetch(`/api/budget/month?month=${month}`))
+        .then((r) => r.json()),
       fetch('/api/categories/groups').then((r) => r.json()),
     ])
       .then(([fundsJson, budgetJson, catsJson]) => {

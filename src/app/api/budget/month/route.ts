@@ -29,16 +29,6 @@ export async function GET(req: Request) {
   }
   const targetMonth = parsed.data
 
-  // Lazy-create budget_months for target month
-  const { error: upsertErr } = await supabase
-    .from('budget_months')
-    .upsert({ user_id: user.id, month: targetMonth }, { onConflict: 'user_id,month' })
-
-  if (upsertErr) {
-    console.error('GET /api/budget/month upsert error', upsertErr)
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
-  }
-
   // Fetch all budget_months up to and including target
   const { data: allMonthsData, error: monthsErr } = await supabase
     .from('budget_months')
@@ -227,4 +217,31 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({ data: responseData })
+}
+
+export async function POST(req: Request) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const url = new URL(req.url)
+  const monthParam = url.searchParams.get('month') ?? currentMonth()
+  const parsed = monthSchema.safeParse(monthParam)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Mes inválido (YYYY-MM)' }, { status: 400 })
+  }
+  const targetMonth = parsed.data
+
+  const { error: upsertErr } = await supabase
+    .from('budget_months')
+    .upsert({ user_id: user.id, month: targetMonth }, { onConflict: 'user_id,month' })
+
+  if (upsertErr) {
+    console.error('POST /api/budget/month upsert error', upsertErr)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true })
 }
