@@ -36,6 +36,8 @@ export function BudgetClient({ initialMonth, initialData }: Props) {
     setLoading(true)
     setError(null)
     try {
+      // Ensure budget_month row exists before reading (POST is idempotent via upsert)
+      await fetch(`/api/budget/month?month=${m}`, { method: 'POST' })
       const res = await fetch(`/api/budget/month?month=${m}`)
       const json = await res.json()
       if (!res.ok) {
