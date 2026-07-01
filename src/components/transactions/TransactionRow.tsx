@@ -100,7 +100,7 @@ export function TransactionRow({ tx, onEdit, onDelete }: Props) {
           <button
             onClick={() => onEdit(tx)}
             aria-label="Editar"
-            className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
+            className="p-2.5 rounded-lg transition-opacity hover:opacity-70"
             style={{ color: "var(--text-dim)" }}
           >
             <Pencil size={14} />
@@ -108,7 +108,7 @@ export function TransactionRow({ tx, onEdit, onDelete }: Props) {
           <button
             onClick={() => onDelete(tx)}
             aria-label="Eliminar"
-            className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
+            className="p-2.5 rounded-lg transition-opacity hover:opacity-70"
             style={{ color: "var(--text-dim)" }}
           >
             <Trash2 size={14} />

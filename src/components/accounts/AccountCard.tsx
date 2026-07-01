@@ -69,7 +69,7 @@ export function AccountCard({ account, onEdit, onArchive, onReconcile, archiving
       style={{ borderBottom: "1px solid var(--border-row)" }}
     >
       <div
-        className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
+        className="flex items-center justify-center w-11 h-11 rounded-xl shrink-0"
         style={{ background: "var(--bg-elevated)" }}
       >
         <Icon size={16} strokeWidth={1.8} />
@@ -96,7 +96,7 @@ export function AccountCard({ account, onEdit, onArchive, onReconcile, archiving
         <button
           onClick={() => setMenuOpen((o) => !o)}
           aria-label="Opciones de cuenta"
-          className="flex items-center justify-center w-8 h-8 rounded-xl transition-colors"
+          className="flex items-center justify-center w-10 h-10 rounded-xl transition-colors"
           style={{ color: "var(--text-dim)" }}
         >
           <MoreVertical size={16} />
