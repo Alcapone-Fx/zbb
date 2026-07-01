@@ -50,7 +50,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <OfflineBanner />
 
         {/* Scrollable content — bottom padding clears the mobile nav */}
-        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
+        <main
+          className="flex-1 overflow-y-auto lg:!pb-0"
+          style={{ paddingBottom: "calc(4rem + env(safe-area-inset-bottom, 0px))" }}
+        >
           {children}
         </main>
       </div>

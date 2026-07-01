@@ -230,3 +230,11 @@ input[type="number"] {
   from { transform: translateY(14px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
+
+/* ─── iOS safe area insets ───────────────────────────────────────────────── */
+/* Requires viewport-fit=cover in the viewport meta tag */
+
+:root {
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+}

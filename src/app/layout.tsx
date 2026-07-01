@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   title: "Balancr",
   description: "Presupuesto de base cero personal",
   manifest: "/manifest.json",
+  icons: { apple: '/icons/apple-touch-icon.png' },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -25,8 +26,7 @@ export const viewport: Viewport = {
   themeColor: "#0B1422",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
