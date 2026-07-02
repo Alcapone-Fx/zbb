@@ -23,8 +23,10 @@ export async function PATCH(req: Request) {
 
   const { data: settings, error } = await supabase
     .from('user_settings')
-    .update(parsed.data)
-    .eq('user_id', user.id)
+    .upsert(
+      { user_id: user.id, ...parsed.data },
+      { onConflict: 'user_id' }
+    )
     .select('emergency_fund_min_expense')
     .single()
 

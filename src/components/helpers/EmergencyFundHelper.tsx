@@ -25,6 +25,7 @@ export function EmergencyFundHelper() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [promptMinExpense, setPromptMinExpense] = useState('')
   const [savingExpense, setSavingExpense] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -52,6 +53,7 @@ export function EmergencyFundHelper() {
     const value = parseFloat(promptMinExpense)
     if (!value || value <= 0) return
     setSavingExpense(true)
+    setSaveError(null)
     try {
       const res = await fetch('/api/user-settings', {
         method: 'PATCH',
@@ -59,11 +61,14 @@ export function EmergencyFundHelper() {
         body: JSON.stringify({ emergency_fund_min_expense: value }),
       })
       if (res.ok) {
-        await load()
+        load()
         setPromptMinExpense('')
+      } else {
+        const json = await res.json().catch(() => ({}))
+        setSaveError(json.error ?? 'Error al guardar')
       }
     } catch {
-      // ignore
+      setSaveError('Error de conexión')
     } finally {
       setSavingExpense(false)
     }
@@ -131,6 +136,11 @@ export function EmergencyFundHelper() {
         >
           {savingExpense ? 'Guardando…' : 'Guardar y continuar'}
         </button>
+        {saveError && (
+          <p className="text-xs mt-1" style={{ color: 'var(--color-negative)' }}>
+            {saveError}
+          </p>
+        )}
       </div>
     )
   }
@@ -244,28 +254,35 @@ export function EmergencyFundHelper() {
           </button>
         </p>
         {promptMinExpense !== '' && (
-          <div className="flex gap-2 mt-2">
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={promptMinExpense}
-              onChange={(e) => setPromptMinExpense(e.target.value)}
-              className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none"
-              style={{
-                background: 'var(--bg-card)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-main)',
-              }}
-            />
-            <button
-              onClick={handleSaveMinExpense}
-              disabled={savingExpense}
-              className="rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-40"
-              style={{ background: 'var(--ac)', color: '#fff' }}
-            >
-              {savingExpense ? '…' : 'Guardar'}
-            </button>
+          <div className="mt-2 space-y-1">
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={promptMinExpense}
+                onChange={(e) => setPromptMinExpense(e.target.value)}
+                className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none"
+                style={{
+                  background: 'var(--bg-card)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--text-main)',
+                }}
+              />
+              <button
+                onClick={handleSaveMinExpense}
+                disabled={savingExpense}
+                className="rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-40"
+                style={{ background: 'var(--ac)', color: '#fff' }}
+              >
+                {savingExpense ? '…' : 'Guardar'}
+              </button>
+            </div>
+            {saveError && (
+              <p className="text-xs" style={{ color: 'var(--color-negative)' }}>
+                {saveError}
+              </p>
+            )}
           </div>
         )}
       </div>

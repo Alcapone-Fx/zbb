@@ -227,6 +227,10 @@ export function SinkingFundsHelper() {
             placeholder="Nombre del fondo"
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="words"
+            spellCheck={false}
             className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
             style={{ background: 'var(--bg-app)', borderColor: 'var(--border)', color: 'var(--text-main)' }}
           />

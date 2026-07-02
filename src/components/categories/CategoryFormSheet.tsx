@@ -61,6 +61,10 @@ function CategoryFormBody({ category, groupId, onSave, onClose }: CategoryFormBo
           onChange={(e) => setName(e.target.value)}
           placeholder="ej. Alimentación"
           autoFocus
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="words"
+          spellCheck={false}
         />
       </div>
 
