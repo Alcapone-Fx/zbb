@@ -8,6 +8,7 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('es-419', {
     style: 'currency',
     currency: 'USD',
+    currencyDisplay: 'narrowSymbol',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount)
