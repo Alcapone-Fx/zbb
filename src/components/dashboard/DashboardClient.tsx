@@ -1,18 +1,25 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { PeriodSelector } from './PeriodSelector'
 import { KPICard } from './KPICard'
 import { IdealVsRealTable } from './IdealVsRealTable'
 import type { DashboardData, DashboardPeriod } from '@/types/dashboard'
 
-interface Props {
-  initialData: DashboardData
+const EMPTY_DATA: DashboardData = {
+  period: 'current_month',
+  net_income: 0,
+  total_expense: 0,
+  expense_pct: 0,
+  savings: 0,
+  savings_pct: 0,
+  net_worth: 0,
+  ideal_vs_real: [],
 }
 
-export function DashboardClient({ initialData }: Props) {
-  const [data, setData] = useState<DashboardData>(initialData)
-  const [loading, setLoading] = useState(false)
+export function DashboardClient() {
+  const [data, setData] = useState<DashboardData>(EMPTY_DATA)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const fetchPeriod = useCallback(async (period: DashboardPeriod) => {
@@ -32,6 +39,11 @@ export function DashboardClient({ initialData }: Props) {
       setLoading(false)
     }
   }, [])
+
+  // Fetch current month on mount
+  useEffect(() => {
+    fetchPeriod('current_month')
+  }, [fetchPeriod])
 
   function handlePeriodChange(p: DashboardPeriod) {
     fetchPeriod(p)

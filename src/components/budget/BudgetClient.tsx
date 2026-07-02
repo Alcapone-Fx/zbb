@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { MonthNavigator } from './MonthNavigator'
 import { DineroAAsignarKPI } from './DineroAAsignarKPI'
 import { TemplateActions } from './TemplateActions'
@@ -18,15 +18,22 @@ function isPastMonth(month: string): boolean {
   return month < currentMonthString()
 }
 
+const EMPTY_DATA: BudgetMonthData = {
+  month: '',
+  dineroAAsignar: 0,
+  groups: [],
+}
+
 interface Props {
   initialMonth: string
-  initialData: BudgetMonthData
+  initialData?: BudgetMonthData
 }
 
 export function BudgetClient({ initialMonth, initialData }: Props) {
   const [month, setMonth] = useState(initialMonth)
-  const [data, setData] = useState<BudgetMonthData>(initialData)
-  const [loading, setLoading] = useState(false)
+  const [data, setData] = useState<BudgetMonthData>(initialData ?? EMPTY_DATA)
+  // Start in loading state when no server-side data provided
+  const [loading, setLoading] = useState(!initialData)
   const [error, setError] = useState<string | null>(null)
   const [trendsCategory, setTrendsCategory] = useState<string | null>(null)
 
@@ -53,6 +60,13 @@ export function BudgetClient({ initialMonth, initialData }: Props) {
       setLoading(false)
     }
   }, [isStale, clearStale])
+
+  // Fetch initial data on mount when no server-side data was provided
+  useEffect(() => {
+    if (!initialData) {
+      fetchMonth(initialMonth)
+    }
+  }, [fetchMonth, initialData, initialMonth])
 
   async function handleMonthChange(m: string) {
     setMonth(m)
