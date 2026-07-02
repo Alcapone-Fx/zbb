@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutGrid, Wallet, BarChart2, Sparkles, Settings2 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutGrid, Wallet, BarChart2, Sparkles, Settings2, LogOut } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 const NAV_ITEMS = [
   { href: "/budget",    label: "Presupuesto", Icon: LayoutGrid },
@@ -15,6 +17,16 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside
@@ -35,7 +47,7 @@ export function Sidebar() {
         </span>
       </div>
 
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-1 flex-1">
         {NAV_ITEMS.map(({ href, label, Icon }) => {
           const active = pathname.startsWith(href);
           return (
@@ -56,6 +68,20 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Logout */}
+      <button
+        onClick={handleLogout}
+        disabled={loggingOut}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors w-full mt-2"
+        style={{
+          color: "#F87171",
+          opacity: loggingOut ? 0.6 : 1,
+        }}
+      >
+        <LogOut size={18} strokeWidth={1.8} />
+        {loggingOut ? "Cerrando..." : "Cerrar sesión"}
+      </button>
     </aside>
   );
 }
