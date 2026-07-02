@@ -227,7 +227,7 @@ export function SinkingFundsHelper() {
             placeholder="Nombre del fondo"
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            autoComplete="off"
+            autoComplete="nope"
             autoCorrect="off"
             autoCapitalize="words"
             spellCheck={false}

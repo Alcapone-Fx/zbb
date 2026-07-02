@@ -166,7 +166,7 @@ export function WishlistHelper() {
             placeholder="¿Qué quieres comprar?"
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            autoComplete="off"
+            autoComplete="nope"
             autoCorrect="off"
             autoCapitalize="words"
             spellCheck={false}

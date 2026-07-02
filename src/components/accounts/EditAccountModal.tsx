@@ -124,7 +124,7 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
               maxLength={100}
               required
               autoFocus
-              autoComplete="off"
+              autoComplete="nope"
               autoCorrect="off"
               autoCapitalize="words"
               spellCheck={false}

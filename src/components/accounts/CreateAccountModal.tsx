@@ -160,7 +160,7 @@ export function CreateAccountModal({ open, onClose, onCreated, defaultTrackingOn
               maxLength={100}
               required
               autoFocus
-              autoComplete="off"
+              autoComplete="nope"
               autoCorrect="off"
               autoCapitalize="words"
               spellCheck={false}
