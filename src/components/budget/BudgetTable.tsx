@@ -169,7 +169,7 @@ interface BudgetGroupProps {
 }
 
 function BudgetGroup({ group, month, onEdit, onTrends, isPast }: BudgetGroupProps) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
 
   const totalAssigned = group.categories.reduce((s, c) => s + c.assigned, 0)
   const totalActivity = group.categories.reduce((s, c) => s + c.activity, 0)
