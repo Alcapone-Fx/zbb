@@ -5,17 +5,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { loginSchema } from '@/types/auth'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function LoginPage() {
@@ -42,10 +31,6 @@ export default function LoginPage() {
     const { error: authError } = await supabase.auth.signInWithPassword({
       email: result.data.email,
       password: result.data.password,
-      options: {
-        // Without rememberMe, session ends when browser tab closes
-        // @supabase/ssr manages cookie persistence
-      },
     })
 
     if (authError) {
@@ -54,30 +39,57 @@ export default function LoginPage() {
       return
     }
 
-    // If rememberMe is false, the session should not persist across browser restarts.
-    // Supabase SSR cookies default to session cookies; no extra step needed for non-persistent.
     router.push('/budget')
     router.refresh()
   }
 
+  const inputStyle = {
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-main)',
+    border: '1px solid var(--border-card)',
+  }
+
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Iniciar sesión</CardTitle>
-        <CardDescription>
+    <div
+      className="w-full max-w-sm overflow-hidden"
+      style={{
+        background: 'var(--bg-surface)',
+        borderRadius: '24px',
+        border: '1px solid var(--border-card)',
+      }}
+    >
+      {/* Header */}
+      <div className="px-6 pt-8 pb-6">
+        <h1
+          className="text-2xl font-extrabold tracking-[-0.5px]"
+          style={{ color: 'var(--text-main)' }}
+        >
+          Iniciar sesión
+        </h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-sub)' }}>
           Ingresa tu email y contraseña para acceder
-        </CardDescription>
-      </CardHeader>
+        </p>
+      </div>
+
+      {/* Form body */}
       <form onSubmit={handleSubmit}>
-        <CardContent className="grid gap-4">
+        <div className="px-6 flex flex-col gap-4 pb-6">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
+
+          {/* Email */}
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="email"
+              className="text-xs font-semibold uppercase tracking-wide"
+              style={{ color: 'var(--text-dim)' }}
+            >
+              Email
+            </label>
+            <input
               id="email"
               type="email"
               placeholder="tu@email.com"
@@ -86,19 +98,30 @@ export default function LoginPage() {
               autoComplete="email"
               required
               disabled={loading}
+              className="rounded-xl px-4 py-3 text-sm outline-none transition-colors"
+              style={inputStyle}
             />
           </div>
-          <div className="grid gap-2">
+
+          {/* Password */}
+          <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Contraseña</Label>
+              <label
+                htmlFor="password"
+                className="text-xs font-semibold uppercase tracking-wide"
+                style={{ color: 'var(--text-dim)' }}
+              >
+                Contraseña
+              </label>
               <Link
                 href="/forgot-password"
-                className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                className="text-xs font-medium transition-opacity hover:opacity-80"
+                style={{ color: 'var(--ac)' }}
               >
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
-            <Input
+            <input
               id="password"
               type="password"
               value={password}
@@ -106,37 +129,61 @@ export default function LoginPage() {
               autoComplete="current-password"
               required
               disabled={loading}
+              className="rounded-xl px-4 py-3 text-sm outline-none transition-colors"
+              style={inputStyle}
             />
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Remember me */}
+          <label className="flex items-center gap-3 cursor-pointer select-none">
             <input
               id="rememberMe"
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 rounded border-border"
               disabled={loading}
+              className="h-4 w-4 rounded"
+              style={{ accentColor: 'var(--ac)' }}
             />
-            <Label htmlFor="rememberMe" className="font-normal cursor-pointer">
+            <span className="text-sm" style={{ color: 'var(--text-sub)' }}>
               Recuérdame
-            </Label>
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-3">
-          <Button type="submit" className="w-full" disabled={loading}>
+            </span>
+          </label>
+        </div>
+
+        {/* Footer actions */}
+        <div
+          className="px-6 py-5 flex flex-col gap-3"
+          style={{
+            borderTop: '1px solid var(--border-card)',
+            background: 'var(--bg-elevated)',
+          }}
+        >
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 rounded-2xl text-sm font-bold transition-opacity"
+            style={{
+              background: 'var(--ac)',
+              color: '#fff',
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
             {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
-          </Button>
-          <p className="text-sm text-center text-muted-foreground">
+          </button>
+
+          <p className="text-sm text-center" style={{ color: 'var(--text-sub)' }}>
             ¿No tienes cuenta?{' '}
             <Link
               href="/register"
-              className="text-foreground underline-offset-4 hover:underline"
+              className="font-semibold transition-opacity hover:opacity-80"
+              style={{ color: 'var(--text-main)' }}
             >
               Regístrate
             </Link>
           </p>
-        </CardFooter>
+        </div>
       </form>
-    </Card>
+    </div>
   )
 }
