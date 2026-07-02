@@ -33,9 +33,9 @@ export default function SettingsPage() {
         >
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--color-accent-muted)' }}
+            style={{ background: 'var(--ab)' }}
           >
-            <Tag size={18} style={{ color: 'var(--color-accent)' }} />
+            <Tag size={18} style={{ color: 'var(--ac)' }} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>
@@ -45,7 +45,7 @@ export default function SettingsPage() {
               Gestiona y reordena tus grupos de presupuesto
             </p>
           </div>
-          <ChevronRight size={16} style={{ color: 'var(--text-dim)' }} />
+          <ChevronRight size={16} style={{ color: 'var(--text-sub)' }} />
         </Link>
 
         <Link
@@ -58,9 +58,9 @@ export default function SettingsPage() {
         >
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--color-accent-muted)' }}
+            style={{ background: 'var(--ab)' }}
           >
-            <Target size={18} style={{ color: 'var(--color-accent)' }} />
+            <Target size={18} style={{ color: 'var(--ac)' }} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>
@@ -70,7 +70,7 @@ export default function SettingsPage() {
               Define el % ideal de ingresos por grupo
             </p>
           </div>
-          <ChevronRight size={16} style={{ color: 'var(--text-dim)' }} />
+          <ChevronRight size={16} style={{ color: 'var(--text-sub)' }} />
         </Link>
 
         {/* Divider */}

@@ -224,7 +224,7 @@ export function QuickAddFormBody({ onClose }: Props) {
       {/* Amount */}
       <div className="flex flex-col gap-1.5">
         <label
-          className="text-xs font-bold uppercase tracking-widest"
+          className="text-xs font-semibold uppercase tracking-wide"
           style={{ color: "var(--text-dim)" }}
         >
           Monto
@@ -258,7 +258,7 @@ export function QuickAddFormBody({ onClose }: Props) {
       {/* Date */}
       <div className="flex flex-col gap-1.5">
         <label
-          className="text-xs font-bold uppercase tracking-widest"
+          className="text-xs font-semibold uppercase tracking-wide"
           style={{ color: "var(--text-dim)" }}
         >
           Fecha
@@ -281,7 +281,7 @@ export function QuickAddFormBody({ onClose }: Props) {
       {type !== "transfer" ? (
         <div className="flex flex-col gap-1.5">
           <label
-            className="text-xs font-bold uppercase tracking-widest"
+            className="text-xs font-semibold uppercase tracking-wide"
             style={{ color: "var(--text-dim)" }}
           >
             Cuenta
@@ -311,7 +311,7 @@ export function QuickAddFormBody({ onClose }: Props) {
         <div className="flex gap-3">
           <div className="flex-1 flex flex-col gap-1.5">
             <label
-              className="text-xs font-bold uppercase tracking-widest"
+              className="text-xs font-semibold uppercase tracking-wide"
               style={{ color: "var(--text-dim)" }}
             >
               Origen
@@ -336,7 +336,7 @@ export function QuickAddFormBody({ onClose }: Props) {
           </div>
           <div className="flex-1 flex flex-col gap-1.5">
             <label
-              className="text-xs font-bold uppercase tracking-widest"
+              className="text-xs font-semibold uppercase tracking-wide"
               style={{ color: "var(--text-dim)" }}
             >
               Destino
@@ -369,7 +369,7 @@ export function QuickAddFormBody({ onClose }: Props) {
       {type !== "transfer" && isOnBudget && (
         <div className="flex flex-col gap-1.5">
           <label
-            className="text-xs font-bold uppercase tracking-widest"
+            className="text-xs font-semibold uppercase tracking-wide"
             style={{ color: "var(--text-dim)" }}
           >
             Categoría
@@ -405,7 +405,7 @@ export function QuickAddFormBody({ onClose }: Props) {
       {type === "transfer" && (
         <div className="flex flex-col gap-1.5">
           <label
-            className="text-xs font-bold uppercase tracking-widest"
+            className="text-xs font-semibold uppercase tracking-wide"
             style={{ color: "var(--text-dim)" }}
           >
             Categoría (si alguna cuenta está en presupuesto)
@@ -439,7 +439,7 @@ export function QuickAddFormBody({ onClose }: Props) {
       {/* Payee with autocomplete */}
       <div className="relative flex flex-col gap-1.5">
         <label
-          className="text-xs font-bold uppercase tracking-widest"
+          className="text-xs font-semibold uppercase tracking-wide"
           style={{ color: "var(--text-dim)" }}
         >
           Beneficiario (opcional)
@@ -485,7 +485,7 @@ export function QuickAddFormBody({ onClose }: Props) {
       {/* Memo */}
       <div className="flex flex-col gap-1.5">
         <label
-          className="text-xs font-bold uppercase tracking-widest"
+          className="text-xs font-semibold uppercase tracking-wide"
           style={{ color: "var(--text-dim)" }}
         >
           Nota (opcional)
@@ -508,7 +508,7 @@ export function QuickAddFormBody({ onClose }: Props) {
       {/* Tags */}
       <div className="flex flex-col gap-1.5">
         <label
-          className="text-xs font-bold uppercase tracking-widest"
+          className="text-xs font-semibold uppercase tracking-wide"
           style={{ color: "var(--text-dim)" }}
         >
           Etiquetas (opcional, separadas por coma)
@@ -565,7 +565,7 @@ export function QuickAddFormBody({ onClose }: Props) {
         <div
           className="rounded-2xl p-4"
           style={{
-            background: "var(--bg-surface)",
+            background: "var(--bg-elevated)",
             border: "1px solid var(--border-card)",
           }}
         >
@@ -603,7 +603,7 @@ export function QuickAddFormBody({ onClose }: Props) {
             <div className="flex flex-col gap-3 mt-4 pt-4" style={{ borderTop: "1px solid var(--border-card)" }}>
               <div className="flex flex-col gap-1.5">
                 <label
-                  className="text-xs font-bold uppercase tracking-widest"
+                  className="text-xs font-semibold uppercase tracking-wide"
                   style={{ color: "var(--text-dim)" }}
                 >
                   Frecuencia
@@ -632,7 +632,7 @@ export function QuickAddFormBody({ onClose }: Props) {
 
               <div className="flex flex-col gap-1.5">
                 <label
-                  className="text-xs font-bold uppercase tracking-widest"
+                  className="text-xs font-semibold uppercase tracking-wide"
                   style={{ color: "var(--text-dim)" }}
                 >
                   Fecha de inicio

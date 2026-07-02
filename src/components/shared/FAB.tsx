@@ -61,7 +61,7 @@ export function FAB() {
                 onClick={() => setOpen(false)}
                 aria-label="Cerrar"
                 className="p-1.5 rounded-xl"
-                style={{ color: "var(--text-dim)" }}
+                style={{ color: "var(--text-sub)" }}
               >
                 <X size={20} />
               </button>
