@@ -62,7 +62,7 @@ export function SortableCategoryItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-3 px-3 py-2.5 rounded-xl ml-4 group/cat',
+        'flex items-center gap-1 px-1 py-0.5 rounded-xl ml-4',
         category.is_archived && 'opacity-50'
       )}
     >
@@ -70,13 +70,13 @@ export function SortableCategoryItem({
         {...attributes}
         {...listeners}
         aria-label="Reordenar"
-        className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0 p-0.5 rounded"
+        className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0 w-8 h-10 flex items-center justify-center rounded"
         style={{ color: 'var(--text-dim)' }}
       >
         <GripVertical size={14} />
       </button>
 
-      <div className="flex-1 min-w-0 flex items-center gap-2">
+      <div className="flex-1 min-w-0 flex items-center gap-2 py-1">
         <span
           className={cn('text-sm font-medium truncate', category.is_archived && 'line-through')}
           style={{ color: category.is_archived ? 'var(--text-dim)' : 'var(--text-main)' }}
@@ -94,30 +94,30 @@ export function SortableCategoryItem({
       </div>
 
       <div
-        className="flex items-center gap-1 opacity-0 group-hover/cat:opacity-100 transition-opacity flex-shrink-0"
+        className="flex items-center flex-shrink-0"
         style={{ color: 'var(--text-sub)' }}
       >
         <button
           onClick={onEdit}
           aria-label="Editar categoría"
-          className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+          className="w-10 h-10 flex items-center justify-center rounded-xl transition-colors hover:bg-white/10"
         >
-          <Pencil size={13} />
+          <Pencil size={14} />
         </button>
         <button
           onClick={onArchive}
           aria-label={category.is_archived ? 'Desarchivar categoría' : 'Archivar categoría'}
-          className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+          className="w-10 h-10 flex items-center justify-center rounded-xl transition-colors hover:bg-white/10"
         >
-          {category.is_archived ? <ArchiveRestore size={13} /> : <Archive size={13} />}
+          {category.is_archived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
         </button>
         <button
           onClick={onDelete}
           aria-label="Eliminar categoría"
-          className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+          className="w-10 h-10 flex items-center justify-center rounded-xl transition-colors hover:bg-white/10"
           style={{ color: 'var(--color-negative)' }}
         >
-          <Trash2 size={13} />
+          <Trash2 size={14} />
         </button>
       </div>
     </div>

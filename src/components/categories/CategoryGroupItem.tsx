@@ -103,7 +103,12 @@ function SortableGroupHeader({
           >
             Sistema
           </span>
-          <button onClick={onToggle} className="p-1" style={{ color: 'var(--text-dim)' }}>
+          <button
+            onClick={onToggle}
+            aria-label={expanded ? 'Colapsar grupo' : 'Expandir grupo'}
+            className="w-10 h-10 flex items-center justify-center rounded-xl transition-colors hover:bg-white/10"
+            style={{ color: 'var(--text-dim)' }}
+          >
             {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </button>
         </div>
@@ -118,7 +123,7 @@ function SortableGroupHeader({
       className={cn(group.is_archived && 'opacity-60')}
     >
       <div
-        className="flex items-center gap-2 px-3 py-3 group/group rounded-2xl"
+        className="flex items-center gap-1 px-2 py-1 rounded-2xl"
         style={{
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border-card)',
@@ -128,7 +133,7 @@ function SortableGroupHeader({
           {...attributes}
           {...listeners}
           aria-label="Reordenar grupo"
-          className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0 p-0.5 rounded"
+          className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0 w-8 h-10 flex items-center justify-center rounded"
           style={{ color: 'var(--text-dim)' }}
         >
           <GripVertical size={16} />
@@ -136,7 +141,7 @@ function SortableGroupHeader({
 
         <button
           onClick={onToggle}
-          className="flex-1 flex items-center gap-2 text-left min-w-0"
+          className="flex-1 flex items-center gap-2 text-left min-w-0 h-10"
         >
           <span
             className={cn('text-sm font-bold truncate', group.is_archived && 'line-through')}
@@ -166,43 +171,48 @@ function SortableGroupHeader({
         </button>
 
         <div
-          className="flex items-center gap-0.5 opacity-0 group-hover/group:opacity-100 transition-opacity flex-shrink-0"
+          className="flex items-center flex-shrink-0"
           style={{ color: 'var(--text-sub)' }}
         >
           {!group.is_archived && (
             <button
               onClick={onAddCategory}
               aria-label="Nueva categoría"
-              className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+              className="w-10 h-10 flex items-center justify-center rounded-xl transition-colors hover:bg-white/10"
             >
-              <Plus size={14} />
+              <Plus size={15} />
             </button>
           )}
           <button
             onClick={onEdit}
             aria-label="Editar grupo"
-            className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+            className="w-10 h-10 flex items-center justify-center rounded-xl transition-colors hover:bg-white/10"
           >
-            <Pencil size={13} />
+            <Pencil size={14} />
           </button>
           <button
             onClick={onArchive}
             aria-label={group.is_archived ? 'Desarchivar grupo' : 'Archivar grupo'}
-            className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+            className="w-10 h-10 flex items-center justify-center rounded-xl transition-colors hover:bg-white/10"
           >
-            {group.is_archived ? <ArchiveRestore size={13} /> : <Archive size={13} />}
+            {group.is_archived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
           </button>
           <button
             onClick={onDelete}
             aria-label="Eliminar grupo"
-            className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+            className="w-10 h-10 flex items-center justify-center rounded-xl transition-colors hover:bg-white/10"
             style={{ color: 'var(--color-negative)' }}
           >
-            <Trash2 size={13} />
+            <Trash2 size={14} />
           </button>
         </div>
 
-        <button onClick={onToggle} className="p-1 flex-shrink-0" style={{ color: 'var(--text-dim)' }}>
+        <button
+          onClick={onToggle}
+          aria-label={expanded ? 'Colapsar grupo' : 'Expandir grupo'}
+          className="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-xl transition-colors hover:bg-white/10"
+          style={{ color: 'var(--text-dim)' }}
+        >
           {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </button>
       </div>

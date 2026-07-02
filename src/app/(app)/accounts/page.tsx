@@ -45,9 +45,6 @@ export default function AccountsPage() {
   const [editTarget, setEditTarget] = useState<AccountWithBalance | null>(null);
   const [reconcileTarget, setReconcileTarget] = useState<AccountWithBalance | null>(null);
 
-  const [archivingId, setArchivingId] = useState<string | null>(null);
-  const [archiveError, setArchiveError] = useState<string | null>(null);
-
   const fetchAccounts = useCallback(async () => {
     try {
       const res = await fetch("/api/accounts");
@@ -69,26 +66,17 @@ export default function AccountsPage() {
     fetchAccounts();
   }, [fetchAccounts]);
 
-  async function handleArchive(account: AccountWithBalance) {
-    setArchiveError(null);
-    setArchivingId(account.id);
-    try {
-      const res = await fetch(`/api/accounts/${account.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "archive" }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setArchiveError(json.error ?? "Error al archivar");
-      } else {
-        await fetchAccounts();
-      }
-    } catch {
-      setArchiveError("Error de conexión");
-    } finally {
-      setArchivingId(null);
+  async function archiveAccount(account: AccountWithBalance): Promise<void> {
+    const res = await fetch(`/api/accounts/${account.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "archive" }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.error ?? "Error al archivar");
     }
+    await fetchAccounts();
   }
 
   const netWorth = data?.net_worth ?? 0;
@@ -195,21 +183,13 @@ export default function AccountsPage() {
           </div>
         )}
 
-        {/* Error banners */}
+        {/* Error banner */}
         {apiError && (
           <div
             className="mt-3 px-4 py-2.5 rounded-xl text-sm"
             style={{ background: "rgba(248,113,113,0.1)", color: "var(--color-negative)" }}
           >
             {apiError}
-          </div>
-        )}
-        {archiveError && (
-          <div
-            className="mt-3 px-4 py-2.5 rounded-xl text-sm"
-            style={{ background: "rgba(248,113,113,0.1)", color: "var(--color-negative)" }}
-          >
-            {archiveError}
           </div>
         )}
       </div>
@@ -223,10 +203,7 @@ export default function AccountsPage() {
               a.type === "liability" ? s - a.balance : s + a.balance, 0)
           )}
           accounts={data?.on_budget ?? []}
-          archivingId={archivingId}
           onEdit={setEditTarget}
-          onArchive={handleArchive}
-          onReconcile={setReconcileTarget}
         />
 
         <AccountGroup
@@ -237,10 +214,7 @@ export default function AccountsPage() {
           )}
           accounts={data?.off_budget ?? []}
           isOffBudget
-          archivingId={archivingId}
           onEdit={setEditTarget}
-          onArchive={handleArchive}
-          onReconcile={setReconcileTarget}
         />
       </div>
 
@@ -261,7 +235,6 @@ export default function AccountsPage() {
         <button
           onClick={() => {
             setCreateTrackingOnly(false);
-            setArchiveError(null);
             setCreateOpen(true);
           }}
           className="flex items-center justify-center w-full py-3.5 rounded-2xl text-sm font-bold transition-opacity hover:opacity-80"
@@ -286,6 +259,12 @@ export default function AccountsPage() {
         account={editTarget}
         onClose={() => setEditTarget(null)}
         onSaved={fetchAccounts}
+        onArchive={editTarget ? () => archiveAccount(editTarget) : undefined}
+        onReconcile={editTarget ? () => {
+          const t = editTarget;
+          setEditTarget(null);
+          setReconcileTarget(t);
+        } : undefined}
       />
 
       {/* Reconciliation bottom sheet */}
@@ -325,7 +304,7 @@ export default function AccountsPage() {
               <button
                 onClick={() => setReconcileTarget(null)}
                 aria-label="Cerrar"
-                className="p-1.5 rounded-xl"
+                className="w-10 h-10 flex items-center justify-center rounded-xl"
                 style={{ color: "var(--text-dim)" }}
               >
                 <X size={20} />
