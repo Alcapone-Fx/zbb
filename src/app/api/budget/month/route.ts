@@ -145,7 +145,12 @@ export async function GET(req: Request) {
     }
 
     // Income for Dinero a Asignar
-    if (tx.type === 'income') {
+    const countsAsIncome =
+      tx.type === 'income' ||
+      tx.type === 'opening_balance' ||
+      (tx.type === 'adjustment' && amount > 0)
+
+    if (countsAsIncome) {
       if (txMonth === targetMonth && !tx.next_month) {
         incomeThisMonth += amount
       } else if (txMonth === prevMonth && tx.next_month) {

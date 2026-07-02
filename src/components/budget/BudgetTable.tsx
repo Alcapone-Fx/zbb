@@ -4,12 +4,23 @@ import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { BudgetGroupRow, BudgetCategoryRow } from '@/types/budget'
 
-function formatCurrency(amount: number): string {
+function formatCompact(amount: number): string {
   return new Intl.NumberFormat('es-419', {
     style: 'currency',
     currency: 'USD',
+    currencyDisplay: 'narrowSymbol',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
+  }).format(amount)
+}
+
+function formatExact(amount: number): string {
+  return new Intl.NumberFormat('es-419', {
+    style: 'currency',
+    currency: 'USD',
+    currencyDisplay: 'narrowSymbol',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount)
 }
 
@@ -124,7 +135,7 @@ function BudgetRow({ cat, month, onEdit, onTrends, isPast }: BudgetRowProps) {
             opacity: cat.is_system ? 0.5 : 1,
           }}
         >
-          {cat.is_system ? '—' : formatCurrency(cat.assigned)}
+          {cat.is_system ? '—' : formatCompact(cat.assigned)}
         </button>
       )}
 
@@ -135,7 +146,7 @@ function BudgetRow({ cat, month, onEdit, onTrends, isPast }: BudgetRowProps) {
           color: cat.activity < 0 ? 'var(--color-negative)' : 'var(--text-dim)',
         }}
       >
-        {cat.activity !== 0 ? formatCurrency(cat.activity) : '—'}
+        {cat.activity !== 0 ? formatCompact(cat.activity) : '—'}
       </p>
 
       {/* Disponible */}
@@ -143,7 +154,7 @@ function BudgetRow({ cat, month, onEdit, onTrends, isPast }: BudgetRowProps) {
         className="text-right text-xs font-bold tabular-nums"
         style={{ color: disponibleColor }}
       >
-        {formatCurrency(cat.disponible)}
+        {formatCompact(cat.disponible)}
       </p>
     </div>
   )
@@ -186,13 +197,13 @@ function BudgetGroup({ group, month, onEdit, onTrends, isPast }: BudgetGroupProp
           </span>
         </span>
         <span className="text-right text-[11px] font-bold tabular-nums" style={{ color: 'var(--text-main)' }}>
-          {formatCurrency(totalAssigned)}
+          {formatExact(totalAssigned)}
         </span>
         <span
           className="text-right text-[11px] tabular-nums"
           style={{ color: totalActivity < 0 ? 'var(--color-negative)' : 'var(--text-dim)' }}
         >
-          {totalActivity !== 0 ? formatCurrency(totalActivity) : '—'}
+          {totalActivity !== 0 ? formatExact(totalActivity) : '—'}
         </span>
         <span
           className="text-right text-[11px] font-bold tabular-nums"
@@ -205,7 +216,7 @@ function BudgetGroup({ group, month, onEdit, onTrends, isPast }: BudgetGroupProp
                   : 'var(--text-dim)',
           }}
         >
-          {formatCurrency(totalDisponible)}
+          {formatExact(totalDisponible)}
         </span>
       </button>
 

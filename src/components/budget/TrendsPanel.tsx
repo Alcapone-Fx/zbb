@@ -24,8 +24,19 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('es-419', {
     style: 'currency',
     currency: 'USD',
+    currencyDisplay: 'narrowSymbol',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
+  }).format(Math.abs(amount))
+}
+
+function formatExact(amount: number): string {
+  return new Intl.NumberFormat('es-419', {
+    style: 'currency',
+    currency: 'USD',
+    currencyDisplay: 'narrowSymbol',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Math.abs(amount))
 }
 
@@ -132,7 +143,7 @@ export function TrendsPanel({ categoryId, onClose }: Props) {
                     Gasto prom. (3 m)
                   </p>
                   <p className="text-base font-extrabold tabular-nums" style={{ color: 'var(--text-main)' }}>
-                    {formatCurrency(data.avgActivity)}
+                    {formatExact(data.avgActivity)}
                   </p>
                 </div>
                 {data.peakMonth && (
