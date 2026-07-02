@@ -160,6 +160,10 @@ export function CreateAccountModal({ open, onClose, onCreated, defaultTrackingOn
               maxLength={100}
               required
               autoFocus
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="words"
+              spellCheck={false}
               className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none transition-colors"
               style={{
                 background: "var(--bg-elevated)",

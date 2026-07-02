@@ -60,6 +60,10 @@ function GroupFormBody({ group, onSave, onClose }: GroupFormBodyProps) {
           onChange={(e) => setName(e.target.value)}
           placeholder="ej. Necesidades"
           autoFocus
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="words"
+          spellCheck={false}
         />
       </div>
 
