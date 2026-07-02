@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
 import type { CreateTransactionInput } from "@/types/transaction";
@@ -44,6 +45,7 @@ export function QuickAddFormBody({ onClose }: Props) {
   const [recurStartDate, setRecurStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const payeeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -199,7 +201,7 @@ export function QuickAddFormBody({ onClose }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {/* Type selector */}
+      {/* 1. Type selector */}
       <div className="flex gap-2">
         {(["expense", "income", "transfer"] as TxType[]).map((t) => (
           <button
@@ -221,71 +223,38 @@ export function QuickAddFormBody({ onClose }: Props) {
         ))}
       </div>
 
-      {/* Amount */}
-      <div className="flex flex-col gap-1.5">
-        <label
-          className="text-xs font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-dim)" }}
-        >
-          Monto
-        </label>
-        <div className="relative">
-          <span
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold"
-            style={{ color: "var(--text-sub)" }}
-          >
-            $
-          </span>
+      {/* 2. Amount — large display, no label */}
+      <div className="flex items-center justify-center gap-2 py-4">
+        <span className="text-3xl font-bold" style={{ color: "var(--text-dim)" }}>$</span>
+        <input
+          type="number"
+          step="0.01"
+          min="0.01"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0.00"
+          autoFocus
+          required
+          className="text-5xl font-extrabold tabular-nums text-center outline-none bg-transparent w-48"
+          style={{ color: amount ? "var(--text-main)" : "var(--text-dim)" }}
+        />
+      </div>
+
+      {/* 3. Date + Account (2-column grid) / Transfer: date row then Origen+Destino */}
+      {type !== "transfer" ? (
+        <div className="grid grid-cols-2 gap-3">
           <input
-            type="number"
-            step="0.01"
-            min="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
-            autoFocus
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
             required
-            className="w-full rounded-xl pl-8 pr-4 py-3 text-sm font-medium outline-none"
+            className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
             style={{
               background: "var(--bg-elevated)",
               color: "var(--text-main)",
               border: "1px solid var(--border-card)",
             }}
           />
-        </div>
-      </div>
-
-      {/* Date */}
-      <div className="flex flex-col gap-1.5">
-        <label
-          className="text-xs font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-dim)" }}
-        >
-          Fecha
-        </label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          required
-          className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-          style={{
-            background: "var(--bg-elevated)",
-            color: "var(--text-main)",
-            border: "1px solid var(--border-card)",
-          }}
-        />
-      </div>
-
-      {/* Account(s) */}
-      {type !== "transfer" ? (
-        <div className="flex flex-col gap-1.5">
-          <label
-            className="text-xs font-semibold uppercase tracking-wide"
-            style={{ color: "var(--text-dim)" }}
-          >
-            Cuenta
-          </label>
           <select
             value={accountId}
             onChange={(e) => {
@@ -308,76 +277,90 @@ export function QuickAddFormBody({ onClose }: Props) {
           </select>
         </div>
       ) : (
-        <div className="flex gap-3">
-          <div className="flex-1 flex flex-col gap-1.5">
-            <label
-              className="text-xs font-semibold uppercase tracking-wide"
-              style={{ color: "var(--text-dim)" }}
-            >
-              Origen
-            </label>
-            <select
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              required
-              className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-              style={{
-                background: "var(--bg-elevated)",
-                color: "var(--text-main)",
-                border: "1px solid var(--border-card)",
-              }}
-            >
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1 flex flex-col gap-1.5">
-            <label
-              className="text-xs font-semibold uppercase tracking-wide"
-              style={{ color: "var(--text-dim)" }}
-            >
-              Destino
-            </label>
-            <select
-              value={transferToAccountId}
-              onChange={(e) => setTransferToAccountId(e.target.value)}
-              required
-              className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-              style={{
-                background: "var(--bg-elevated)",
-                color: "var(--text-main)",
-                border: "1px solid var(--border-card)",
-              }}
-            >
-              <option value="">Seleccionar</option>
-              {accounts
-                .filter((a) => a.id !== accountId)
-                .map((a) => (
+        <>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+            className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
+            style={{
+              background: "var(--bg-elevated)",
+              color: "var(--text-main)",
+              border: "1px solid var(--border-card)",
+            }}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label
+                className="text-xs font-semibold uppercase tracking-wide"
+                style={{ color: "var(--text-dim)" }}
+              >
+                Origen
+              </label>
+              <select
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                required
+                className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
+                style={{
+                  background: "var(--bg-elevated)",
+                  color: "var(--text-main)",
+                  border: "1px solid var(--border-card)",
+                }}
+              >
+                {accounts.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
                   </option>
                 ))}
-            </select>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label
+                className="text-xs font-semibold uppercase tracking-wide"
+                style={{ color: "var(--text-dim)" }}
+              >
+                Destino
+              </label>
+              <select
+                value={transferToAccountId}
+                onChange={(e) => setTransferToAccountId(e.target.value)}
+                required
+                className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
+                style={{
+                  background: "var(--bg-elevated)",
+                  color: "var(--text-main)",
+                  border: "1px solid var(--border-card)",
+                }}
+              >
+                <option value="">Seleccionar</option>
+                {accounts
+                  .filter((a) => a.id !== accountId)
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
-      {/* Category */}
+      {/* 4. Category — expense: required; income: optional label + not required; transfer: separate block */}
       {type !== "transfer" && isOnBudget && (
         <div className="flex flex-col gap-1.5">
           <label
             className="text-xs font-semibold uppercase tracking-wide"
             style={{ color: "var(--text-dim)" }}
           >
-            Categoría
+            {type === "income" ? "Categoría (opcional)" : "Categoría"}
           </label>
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            required={isOnBudget}
+            required={type === "expense" && isOnBudget}
             className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
             style={{
               background: "var(--bg-elevated)",
@@ -385,7 +368,9 @@ export function QuickAddFormBody({ onClose }: Props) {
               border: "1px solid var(--border-card)",
             }}
           >
-            <option value="">Seleccionar categoría</option>
+            <option value="">
+              {type === "income" ? "Dinero a Asignar" : "Seleccionar categoría"}
+            </option>
             {userGroups.map((g) => (
               <optgroup key={g.id} label={g.name}>
                 {g.categories
@@ -436,21 +421,23 @@ export function QuickAddFormBody({ onClose }: Props) {
         </div>
       )}
 
-      {/* Payee with autocomplete */}
-      <div className="relative flex flex-col gap-1.5">
-        <label
-          className="text-xs font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-dim)" }}
-        >
-          Beneficiario (opcional)
-        </label>
+      {/* 5. Payee with autocomplete — no label, placeholder varies by type */}
+      <div className="relative">
         <input
           type="text"
           value={payee}
           onChange={(e) => onPayeeChange(e.target.value)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-          placeholder="Ej. Supermercado, Netflix"
+          placeholder={
+            type === "expense"
+              ? "¿Dónde gastaste?"
+              : type === "income"
+              ? "¿De dónde vino?"
+              : "Descripción"
+          }
           maxLength={255}
+          autoComplete="nope"
+          autoCorrect="off"
           className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
           style={{
             background: "var(--bg-elevated)",
@@ -482,178 +469,195 @@ export function QuickAddFormBody({ onClose }: Props) {
         )}
       </div>
 
-      {/* Memo */}
-      <div className="flex flex-col gap-1.5">
-        <label
-          className="text-xs font-semibold uppercase tracking-wide"
+      {/* 6. Opciones avanzadas — collapsible */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="flex items-center gap-1.5 w-full py-2 text-xs font-semibold"
           style={{ color: "var(--text-dim)" }}
         >
-          Nota (opcional)
-        </label>
-        <input
-          type="text"
-          value={memo}
-          onChange={(e) => setMemo(e.target.value)}
-          placeholder="Descripción adicional"
-          maxLength={1000}
-          className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-          style={{
-            background: "var(--bg-elevated)",
-            color: "var(--text-main)",
-            border: "1px solid var(--border-card)",
-          }}
-        />
-      </div>
+          <ChevronDown
+            size={14}
+            className={showAdvanced ? "rotate-180" : ""}
+            style={{ transition: "transform 0.2s" }}
+          />
+          Opciones avanzadas
+        </button>
 
-      {/* Tags */}
-      <div className="flex flex-col gap-1.5">
-        <label
-          className="text-xs font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-dim)" }}
-        >
-          Etiquetas (opcional, separadas por coma)
-        </label>
-        <input
-          type="text"
-          value={tagInput}
-          onChange={(e) => setTagInput(e.target.value)}
-          placeholder="viaje, fijo, imprevisto"
-          className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-          style={{
-            background: "var(--bg-elevated)",
-            color: "var(--text-main)",
-            border: "1px solid var(--border-card)",
-          }}
-        />
-      </div>
-
-      {/* Next month (income only) */}
-      {type === "income" && (
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-              Asignar al mes siguiente
-            </p>
-            <p className="text-xs" style={{ color: "var(--text-sub)" }}>
-              El ingreso se cuenta en el presupuesto del mes próximo
-            </p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={nextMonth}
-            onClick={() => setNextMonth((v) => !v)}
-            className="relative w-12 h-6 rounded-full transition-colors"
-            style={{
-              background: nextMonth ? "var(--ac)" : "var(--bg-elevated)",
-              border: "1px solid var(--border-card)",
-            }}
-          >
-            <span
-              className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform"
+        {showAdvanced && (
+          <div className="flex flex-col gap-3 pt-1">
+            {/* Nota (memo) */}
+            <input
+              type="text"
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="Nota opcional..."
+              maxLength={1000}
+              autoComplete="nope"
+              className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
               style={{
-                background: "#fff",
-                transform: nextMonth ? "translateX(24px)" : "translateX(0)",
-              }}
-            />
-          </button>
-        </div>
-      )}
-
-      {/* Hacer recurrente (not available for transfers) */}
-      {type !== "transfer" && (
-        <div
-          className="rounded-2xl p-4"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--border-card)",
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                Hacer recurrente
-              </p>
-              <p className="text-xs" style={{ color: "var(--text-sub)" }}>
-                Programa esta transacción para que se repita
-              </p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={makeRecurring}
-              onClick={() => setMakeRecurring((v) => !v)}
-              className="relative w-12 h-6 rounded-full transition-colors shrink-0"
-              style={{
-                background: makeRecurring ? "var(--ac)" : "var(--bg-elevated)",
+                background: "var(--bg-elevated)",
+                color: "var(--text-main)",
                 border: "1px solid var(--border-card)",
               }}
-            >
-              <span
-                className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform"
-                style={{
-                  background: "#fff",
-                  transform: makeRecurring ? "translateX(24px)" : "translateX(0)",
-                }}
-              />
-            </button>
-          </div>
+            />
 
-          {makeRecurring && (
-            <div className="flex flex-col gap-3 mt-4 pt-4" style={{ borderTop: "1px solid var(--border-card)" }}>
-              <div className="flex flex-col gap-1.5">
-                <label
-                  className="text-xs font-semibold uppercase tracking-wide"
-                  style={{ color: "var(--text-dim)" }}
-                >
-                  Frecuencia
-                </label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {(["daily", "weekly", "monthly", "yearly"] as const).map((f) => {
-                    const labels = { daily: "Diaria", weekly: "Semanal", monthly: "Mensual", yearly: "Anual" };
-                    return (
-                      <button
-                        key={f}
-                        type="button"
-                        onClick={() => setRecurFrequency(f)}
-                        className="py-2 rounded-xl text-xs font-bold transition-all"
-                        style={{
-                          background: recurFrequency === f ? "var(--ab)" : "var(--bg-elevated)",
-                          color: recurFrequency === f ? "var(--ac)" : "var(--text-sub)",
-                          border: recurFrequency === f ? "1px solid var(--aB)" : "1px solid transparent",
-                        }}
-                      >
-                        {labels[f]}
-                      </button>
-                    );
-                  })}
+            {/* Tags */}
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              placeholder="etiquetas separadas por coma"
+              className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
+              style={{
+                background: "var(--bg-elevated)",
+                color: "var(--text-main)",
+                border: "1px solid var(--border-card)",
+              }}
+            />
+
+            {/* Asignar al mes siguiente (income only) */}
+            {type === "income" && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+                    Asignar al mes siguiente
+                  </p>
+                  <p className="text-xs" style={{ color: "var(--text-sub)" }}>
+                    El ingreso se cuenta en el presupuesto del mes próximo
+                  </p>
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label
-                  className="text-xs font-semibold uppercase tracking-wide"
-                  style={{ color: "var(--text-dim)" }}
-                >
-                  Fecha de inicio
-                </label>
-                <input
-                  type="date"
-                  value={recurStartDate}
-                  onChange={(e) => setRecurStartDate(e.target.value)}
-                  required={makeRecurring}
-                  className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={nextMonth}
+                  onClick={() => setNextMonth((v) => !v)}
+                  className="relative w-12 h-6 rounded-full transition-colors shrink-0"
                   style={{
-                    background: "var(--bg-elevated)",
-                    color: "var(--text-main)",
+                    background: nextMonth ? "var(--ac)" : "var(--bg-elevated)",
                     border: "1px solid var(--border-card)",
                   }}
-                />
+                >
+                  <span
+                    className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform"
+                    style={{
+                      background: "#fff",
+                      transform: nextMonth ? "translateX(24px)" : "translateX(0)",
+                    }}
+                  />
+                </button>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+
+            {/* Hacer recurrente (not available for transfers) */}
+            {type !== "transfer" && (
+              <div
+                className="rounded-2xl p-4"
+                style={{
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--border-card)",
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+                      Hacer recurrente
+                    </p>
+                    <p className="text-xs" style={{ color: "var(--text-sub)" }}>
+                      Programa esta transacción para que se repita
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={makeRecurring}
+                    onClick={() => setMakeRecurring((v) => !v)}
+                    className="relative w-12 h-6 rounded-full transition-colors shrink-0"
+                    style={{
+                      background: makeRecurring ? "var(--ac)" : "var(--bg-elevated)",
+                      border: "1px solid var(--border-card)",
+                    }}
+                  >
+                    <span
+                      className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform"
+                      style={{
+                        background: "#fff",
+                        transform: makeRecurring ? "translateX(24px)" : "translateX(0)",
+                      }}
+                    />
+                  </button>
+                </div>
+
+                {makeRecurring && (
+                  <div
+                    className="flex flex-col gap-3 mt-4 pt-4"
+                    style={{ borderTop: "1px solid var(--border-card)" }}
+                  >
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        className="text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: "var(--text-dim)" }}
+                      >
+                        Frecuencia
+                      </label>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {(["daily", "weekly", "monthly", "yearly"] as const).map((f) => {
+                          const labels = {
+                            daily: "Diaria",
+                            weekly: "Semanal",
+                            monthly: "Mensual",
+                            yearly: "Anual",
+                          };
+                          return (
+                            <button
+                              key={f}
+                              type="button"
+                              onClick={() => setRecurFrequency(f)}
+                              className="py-2 rounded-xl text-xs font-bold transition-all"
+                              style={{
+                                background: recurFrequency === f ? "var(--ab)" : "var(--bg-elevated)",
+                                color: recurFrequency === f ? "var(--ac)" : "var(--text-sub)",
+                                border:
+                                  recurFrequency === f
+                                    ? "1px solid var(--aB)"
+                                    : "1px solid transparent",
+                              }}
+                            >
+                              {labels[f]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        className="text-xs font-semibold uppercase tracking-wide"
+                        style={{ color: "var(--text-dim)" }}
+                      >
+                        Fecha de inicio
+                      </label>
+                      <input
+                        type="date"
+                        value={recurStartDate}
+                        onChange={(e) => setRecurStartDate(e.target.value)}
+                        required={makeRecurring}
+                        className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
+                        style={{
+                          background: "var(--bg-elevated)",
+                          color: "var(--text-main)",
+                          border: "1px solid var(--border-card)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {error && (
         <p
@@ -673,8 +677,8 @@ export function QuickAddFormBody({ onClose }: Props) {
         {submitting
           ? "Guardando..."
           : makeRecurring && type !== "transfer"
-          ? "Guardar Recurrente"
-          : "Registrar Transacción"}
+          ? "Guardar recurrente"
+          : "Guardar transacción"}
       </button>
     </form>
   );
