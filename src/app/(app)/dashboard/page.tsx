@@ -1,126 +1,13 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
 import { DashboardClient } from '@/components/dashboard/DashboardClient'
-import { computePeriodDateRange, computeIdealVsReal } from '@/lib/zbb/dashboard'
-import { computeNetWorth } from '@/lib/zbb/accounts'
-import type { AccountWithBalance } from '@/types/account'
-import type { DashboardData } from '@/types/dashboard'
 
-export default async function DashboardPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const period = 'current_month' as const
-  const { from, to } = computePeriodDateRange(period)
-
-  const [accountsRes, txPeriodRes, groupsRes, allTxRes] = await Promise.all([
-    supabase
-      .from('accounts')
-      .select('id, name, type, is_tracking_only, is_archived, starting_balance, created_at')
-      .eq('user_id', user.id)
-      .eq('is_archived', false),
-
-    supabase
-      .from('transactions')
-      .select('account_id, category_id, amount, type')
-      .eq('user_id', user.id)
-      .gte('date', from)
-      .lte('date', to),
-
-    supabase
-      .from('category_groups')
-      .select('id, name, ideal_percentage')
-      .eq('user_id', user.id)
-      .eq('is_system', false)
-      .eq('is_archived', false)
-      .not('ideal_percentage', 'is', null),
-
-    supabase
-      .from('transactions')
-      .select('account_id, amount')
-      .eq('user_id', user.id),
-  ])
-
-  const allAccounts = accountsRes.data ?? []
-  const balanceMap: Record<string, number> = {}
-  for (const t of allTxRes.data ?? []) {
-    balanceMap[t.account_id] = (balanceMap[t.account_id] ?? 0) + Number(t.amount)
-  }
-  const accountsWithBalance: AccountWithBalance[] = allAccounts.map((a) => ({
-    id: a.id,
-    name: a.name,
-    type: a.type as AccountWithBalance['type'],
-    is_tracking_only: a.is_tracking_only,
-    is_archived: a.is_archived,
-    starting_balance: Number(a.starting_balance),
-    created_at: a.created_at,
-    balance: balanceMap[a.id] ?? 0,
-  }))
-  const net_worth = computeNetWorth(accountsWithBalance)
-
-  const onBudgetIds = new Set(allAccounts.filter((a) => !a.is_tracking_only).map((a) => a.id))
-  const periodTx = (txPeriodRes.data ?? []).filter((t) => onBudgetIds.has(t.account_id))
-
-  const categoryIdsInTx = [
-    ...new Set(periodTx.filter((t) => t.category_id).map((t) => t.category_id as string)),
-  ]
-  const catGroupMap: Record<string, string> = {}
-  if (categoryIdsInTx.length > 0) {
-    const { data: cats } = await supabase
-      .from('categories')
-      .select('id, group_id')
-      .in('id', categoryIdsInTx)
-    for (const c of cats ?? []) catGroupMap[c.id] = c.group_id
-  }
-
-  const groupsWithIdeal = groupsRes.data ?? []
-  const groupsWithIdealIds = new Set(groupsWithIdeal.map((g) => g.id))
-  const groupSpendingMap: Record<string, number> = {}
-
-  let net_income = 0
-  let total_expense = 0
-  for (const tx of periodTx) {
-    const amount = Number(tx.amount)
-    if (tx.type === 'income') {
-      net_income += amount
-    } else if (tx.type === 'expense') {
-      total_expense += Math.abs(amount)
-      if (tx.category_id) {
-        const gid = catGroupMap[tx.category_id]
-        if (gid && groupsWithIdealIds.has(gid)) {
-          groupSpendingMap[gid] = (groupSpendingMap[gid] ?? 0) + Math.abs(amount)
-        }
-      }
-    }
-  }
-
-  const savings = net_income - total_expense
-  const expense_pct = net_income > 0 ? Math.round((total_expense / net_income) * 10000) / 100 : 0
-  const savings_pct = net_income > 0 ? Math.round((savings / net_income) * 10000) / 100 : 0
-
-  const ideal_vs_real = computeIdealVsReal(
-    groupsWithIdeal.map((g) => ({
-      group_id: g.id,
-      group_name: g.name,
-      ideal_percentage: Number(g.ideal_percentage),
-      spending: groupSpendingMap[g.id] ?? 0,
-    })),
-    net_income
-  )
-
-  const initialData: DashboardData = {
-    period,
-    net_income,
-    total_expense,
-    expense_pct,
-    savings,
-    savings_pct,
-    net_worth,
-    ideal_vs_real,
-  }
-
-  return <DashboardClient initialData={initialData} />
+// This is intentionally a thin client component — not async.
+// The original async Server Component + loading.tsx created a streaming Suspense
+// boundary whose $RS reconciler raced with React hydration, causing:
+//   "Cannot read properties of null (reading 'parentNode')"
+// Converting to a synchronous client component eliminates streaming entirely.
+// DashboardClient self-fetches via /api/dashboard on mount.
+export default function DashboardPage() {
+  return <DashboardClient />
 }
