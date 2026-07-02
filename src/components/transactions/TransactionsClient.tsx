@@ -1,21 +1,13 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Download, ChevronDown, ChevronUp } from "lucide-react";
 import type { TransactionWithDetails } from "@/types/transaction";
-import type { AccountWithBalance } from "@/types/account";
+import type { AccountWithBalance, AccountsResponse } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
 import { TransactionRow, formatCurrency } from "./TransactionRow";
 import { EditTransactionSheet } from "./EditTransactionSheet";
 import { ScheduledTransactionsTab } from "./ScheduledTransactionsTab";
-
-interface Props {
-  initialTransactions: TransactionWithDetails[];
-  initialAccounts: AccountWithBalance[];
-  initialGroups: CategoryGroupWithCategories[];
-  initialDateFrom: string;
-  initialDateTo: string;
-}
 
 interface TransactionGroup {
   category_id: string | null;
@@ -57,23 +49,24 @@ function buildExportUrl(params: Record<string, string | undefined>): string {
   return `/api/transactions/export?${q.toString()}`;
 }
 
-export function TransactionsClient({
-  initialTransactions,
-  initialAccounts,
-  initialGroups,
-  initialDateFrom,
-  initialDateTo,
-}: Props) {
+export function TransactionsClient() {
   const [activeTab, setActiveTab] = useState<"historial" | "programadas">("historial");
-  const [transactions, setTransactions] =
-    useState<TransactionWithDetails[]>(initialTransactions);
-  const [dateFrom, setDateFrom] = useState(initialDateFrom);
-  const [dateTo, setDateTo] = useState(initialDateTo);
+  const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
+  const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
+  const [categoryGroups, setCategoryGroups] = useState<CategoryGroupWithCategories[]>([]);
+
+  const [dateFrom, setDateFrom] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  });
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
+
   const [filterType, setFilterType] = useState<string>("");
   const [filterAccount, setFilterAccount] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -82,6 +75,53 @@ export function TransactionsClient({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  // Initial data load — fetch transactions, accounts and category groups in parallel
+  useEffect(() => {
+    const now = new Date();
+    const initFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const initTo = now.toISOString().split("T")[0];
+
+    async function load() {
+      try {
+        const [txRes, accRes, grpRes] = await Promise.all([
+          fetch(`/api/transactions?date_from=${initFrom}&date_to=${initTo}`),
+          fetch("/api/accounts"),
+          fetch("/api/categories/groups"),
+        ]);
+
+        const [txJson, accJson, grpJson] = (await Promise.all([
+          txRes.json(),
+          accRes.json(),
+          grpRes.json(),
+        ])) as [
+          { data?: TransactionWithDetails[]; error?: string },
+          AccountsResponse & { error?: string },
+          { data?: CategoryGroupWithCategories[]; error?: string },
+        ];
+
+        if (!txRes.ok) {
+          setApiError(txJson.error ?? "Error al cargar movimientos");
+        } else {
+          setTransactions(txJson.data ?? []);
+        }
+
+        if (accRes.ok) {
+          setAccounts([...(accJson.on_budget ?? []), ...(accJson.off_budget ?? [])]);
+        }
+
+        if (grpRes.ok) {
+          setCategoryGroups(grpJson.data ?? []);
+        }
+      } catch {
+        setApiError("Error de conexión");
+      } finally {
+        setInitialLoading(false);
+      }
+    }
+
+    void load();
+  }, []);
 
   const fetchTransactions = useCallback(
     async (params?: {
@@ -106,7 +146,7 @@ export function TransactionsClient({
 
       try {
         const res = await fetch(`/api/transactions?${q.toString()}`);
-        const json = await res.json();
+        const json = (await res.json()) as { data?: TransactionWithDetails[]; error?: string };
         if (!res.ok) {
           setApiError(json.error ?? "Error al cargar movimientos");
         } else {
@@ -146,7 +186,7 @@ export function TransactionsClient({
     try {
       const res = await fetch(`/api/transactions/${tx.id}`, { method: "DELETE" });
       if (!res.ok) {
-        const json = await res.json();
+        const json = (await res.json()) as { error?: string };
         setDeleteError(json.error ?? "Error al eliminar");
       } else {
         setTransactions((prev) =>
@@ -165,7 +205,7 @@ export function TransactionsClient({
     }
   }
 
-  const groups = useMemo(() => groupByCategory(transactions), [transactions]);
+  const txGroups = useMemo(() => groupByCategory(transactions), [transactions]);
 
   const totals = useMemo(() => {
     let income = 0;
@@ -179,12 +219,12 @@ export function TransactionsClient({
 
   const allCategories = useMemo(
     () =>
-      initialGroups
+      categoryGroups
         .filter((g) => !g.is_system)
         .flatMap((g) =>
           g.categories.filter((c) => !c.is_system && !c.is_archived)
         ),
-    [initialGroups]
+    [categoryGroups]
   );
 
   function toggleGroup(key: string) {
@@ -203,6 +243,19 @@ export function TransactionsClient({
     account_id: filterAccount || undefined,
     category_id: filterCategory || undefined,
   });
+
+  if (initialLoading) {
+    return (
+      <div
+        className="px-5 pt-14 pb-6 min-h-screen"
+        style={{ background: "linear-gradient(180deg, #162240 0%, var(--bg-app) 100%)" }}
+      >
+        <p className="mt-6 text-sm" style={{ color: "var(--text-dim)" }}>
+          Cargando...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -315,8 +368,8 @@ export function TransactionsClient({
       {/* Programadas tab */}
       {activeTab === "programadas" && (
         <ScheduledTransactionsTab
-          initialAccounts={initialAccounts}
-          initialGroups={initialGroups}
+          initialAccounts={accounts}
+          initialGroups={categoryGroups}
         />
       )}
 
@@ -399,7 +452,7 @@ export function TransactionsClient({
               }}
             >
               <option value="">Todas las cuentas</option>
-              {initialAccounts.map((a) => (
+              {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
                 </option>
@@ -450,7 +503,7 @@ export function TransactionsClient({
 
       {/* Transaction list grouped by category */}
       <div className="pb-24">
-        {groups.length === 0 && !loading && (
+        {txGroups.length === 0 && !loading && (
           <div
             className="flex flex-col items-center justify-center py-16 px-8 text-center"
           >
@@ -466,7 +519,7 @@ export function TransactionsClient({
           </div>
         )}
 
-        {groups.map((group) => {
+        {txGroups.map((group) => {
           const key = group.category_id ?? "__none__";
           const collapsed = collapsedGroups.has(key);
           const isNegative = group.subtotal < 0;
@@ -542,7 +595,7 @@ export function TransactionsClient({
       {editTarget && (
         <EditTransactionSheet
           tx={editTarget}
-          groups={initialGroups}
+          groups={categoryGroups}
           onClose={() => setEditTarget(null)}
           onSaved={() => {
             setEditTarget(null);
