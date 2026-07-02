@@ -23,6 +23,15 @@ const ACCOUNT_TYPES: AccountType[] = [
   "liability",
 ];
 
+const TYPE_DESCRIPTIONS: Record<AccountType, string> = {
+  checking:    "Cuenta bancaria del día a día. Sus movimientos afectan tu presupuesto.",
+  savings:     "Cuenta de ahorro bancaria. Sus movimientos afectan tu presupuesto.",
+  credit_card: "Deuda rotatoria. Las compras reducen tu disponible; la app crea una categoría de pago automática.",
+  cash:        "Dinero en cartera o caja chica. Sus movimientos afectan tu presupuesto.",
+  investment:  "Acciones, fondos, CETES. Solo seguimiento — no afecta tu presupuesto.",
+  liability:   "Hipoteca, crédito auto u otro préstamo fijo. Solo seguimiento — no afecta tu presupuesto.",
+};
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -194,6 +203,13 @@ export function CreateAccountModal({ open, onClose, onCreated, defaultTrackingOn
                 );
               })}
             </div>
+            {/* Inline description for selected type */}
+            <p
+              className="text-xs leading-relaxed px-1 transition-all"
+              style={{ color: "var(--text-sub)" }}
+            >
+              {TYPE_DESCRIPTIONS[type]}
+            </p>
           </div>
 
           {/* Tracking only toggle */}
