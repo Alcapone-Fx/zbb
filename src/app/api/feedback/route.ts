@@ -6,6 +6,7 @@ import type { CapturedError } from '@/hooks/use-error-capture'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN ?? ''
 const FEEDBACK_GH_REPO = process.env.FEEDBACK_GH_REPO ?? 'Alcapone-Fx/zbb'
 const GH_API = 'https://api.github.com'
+const DAILY_LIMIT = Number(process.env.FEEDBACK_DAILY_LIMIT ?? '10')
 
 const capturedErrorSchema = z.object({
   type: z.enum(['console', 'runtime', 'promise']),
@@ -137,6 +138,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Feedback not configured' }, { status: 503 })
   }
 
+  // Rate limit: max DAILY_LIMIT submissions per user per UTC day
+  const dayStart = new Date()
+  dayStart.setUTCHours(0, 0, 0, 0)
+  const { count } = await supabase
+    .from('feedback_submissions')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .gte('created_at', dayStart.toISOString())
+
+  if ((count ?? 0) >= DAILY_LIMIT) {
+    return NextResponse.json(
+      { error: `Límite diario de ${DAILY_LIMIT} reportes alcanzado. Inténtalo mañana.` },
+      { status: 429 }
+    )
+  }
+
   let body: unknown
   try {
     body = await req.json()
@@ -202,6 +219,14 @@ export async function POST(req: Request) {
       console.error('POST /api/feedback: issue update failed', err)
     })
   }
+
+  // Record submission for rate limiting (best-effort — don't fail the response if this errors)
+  await supabase
+    .from('feedback_submissions')
+    .insert({ user_id: user.id })
+    .then(({ error }) => {
+      if (error) console.error('POST /api/feedback: failed to record submission', error)
+    })
 
   return NextResponse.json({
     issueUrl: issue.html_url,
