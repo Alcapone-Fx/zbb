@@ -27,7 +27,7 @@ export function IdealVsRealTable({ rows }: Props) {
         }}
       >
         Sin metas de presupuesto configuradas.{' '}
-        <a href="/settings/goals" className="underline" style={{ color: 'var(--color-accent)' }}>
+        <a href="/settings/goals" className="underline" style={{ color: 'var(--ac)' }}>
           Configurar metas
         </a>
       </div>

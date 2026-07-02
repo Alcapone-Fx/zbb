@@ -260,8 +260,8 @@ export function CategoriesClient({ initialGroups }: CategoriesClientProps) {
           onClick={() => setGroupSheet({ open: true, group: undefined })}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-colors flex-shrink-0"
           style={{
-            background: 'var(--color-accent-muted)',
-            color: 'var(--color-accent)',
+            background: 'var(--ab)',
+            color: 'var(--ac)',
           }}
           aria-label="Nuevo grupo"
         >
@@ -283,7 +283,7 @@ export function CategoriesClient({ initialGroups }: CategoriesClientProps) {
             <button
               onClick={() => setGroupSheet({ open: true })}
               className="text-sm font-semibold"
-              style={{ color: 'var(--color-accent)' }}
+              style={{ color: 'var(--ac)' }}
             >
               + Nuevo grupo
             </button>

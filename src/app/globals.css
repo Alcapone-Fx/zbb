@@ -35,6 +35,7 @@
   --bg-app: #0B1422;
   --bg-surface: #111D32;
   --bg-elevated: #172B48;
+  --bg-card: #111D32;
 
   --text-main: #E0EDFF;
   --text-sub: #6C8DB0;
@@ -53,6 +54,7 @@
   --bg-app: #ffffff;
   --bg-surface: #f8fafc;
   --bg-elevated: #e2e8f0;
+  --bg-card: #f8fafc;
 
   --text-main: #0f172a;
   --text-sub: #475569;

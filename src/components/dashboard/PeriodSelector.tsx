@@ -27,7 +27,7 @@ export function PeriodSelector({ value, onChange }: Props) {
             className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors"
             style={
               active
-                ? { background: 'var(--color-accent)', color: '#fff' }
+                ? { background: 'var(--ac)', color: '#fff' }
                 : {
                     background: 'var(--bg-elevated)',
                     color: 'var(--text-sub)',
