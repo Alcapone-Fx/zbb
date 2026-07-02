@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import {
   Building2,
   PiggyBank,
@@ -9,8 +8,6 @@ import {
   TrendingUp,
   Landmark,
   Pencil,
-  Archive,
-  CheckCircle2,
 } from "lucide-react";
 import type { AccountWithBalance, AccountType } from "@/types/account";
 
@@ -45,14 +42,9 @@ interface Props {
   account: AccountWithBalance;
   isOffBudget?: boolean;
   onEdit: (account: AccountWithBalance) => void;
-  onArchive: (account: AccountWithBalance) => void;
-  onReconcile: (account: AccountWithBalance) => void;
-  archiving: boolean;
 }
 
-export function AccountCard({ account, isOffBudget, onEdit, onArchive, onReconcile, archiving }: Props) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+export function AccountCard({ account, isOffBudget, onEdit }: Props) {
   const Icon = TYPE_ICONS[account.type];
 
   const isNegative =
@@ -61,25 +53,14 @@ export function AccountCard({ account, isOffBudget, onEdit, onArchive, onReconci
   const displayBalance =
     account.type === "liability" ? -account.balance : account.balance;
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [menuOpen]);
-
   const iconBg = isOffBudget
     ? "rgba(52,211,153,0.08)"
     : "var(--ab)";
   const iconColor = isOffBudget ? "#34D399" : "var(--ac)";
 
   const rowPadding = isOffBudget
-    ? "14px 0"
-    : "13px 18px";
+    ? "6px 0"
+    : "6px 12px";
 
   const borderBottom = isOffBudget
     ? "1px solid rgba(255,255,255,0.06)"
@@ -87,10 +68,8 @@ export function AccountCard({ account, isOffBudget, onEdit, onArchive, onReconci
 
   return (
     <div
-      ref={menuRef}
-      className="relative flex items-center gap-3 cursor-pointer"
-      style={{ padding: rowPadding, borderBottom }}
-      onClick={() => setMenuOpen((o) => !o)}
+      className="flex items-center gap-3"
+      style={{ padding: rowPadding, borderBottom, minHeight: "56px" }}
     >
       <div
         className="flex items-center justify-center w-11 h-11 shrink-0"
@@ -124,42 +103,14 @@ export function AccountCard({ account, isOffBudget, onEdit, onArchive, onReconci
         {formatCurrency(displayBalance)}
       </span>
 
-      {menuOpen && (
-        <div
-          className="absolute right-0 top-full z-50 rounded-xl py-1 w-44 shadow-lg"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--border-card)",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={() => { setMenuOpen(false); onEdit(account); }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-opacity hover:opacity-70"
-            style={{ color: "var(--text-sub)" }}
-          >
-            <Pencil size={14} />
-            Editar nombre
-          </button>
-          <button
-            onClick={() => { setMenuOpen(false); onReconcile(account); }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-opacity hover:opacity-70"
-            style={{ color: "var(--text-sub)" }}
-          >
-            <CheckCircle2 size={14} />
-            Conciliar
-          </button>
-          <button
-            onClick={() => { setMenuOpen(false); onArchive(account); }}
-            disabled={archiving}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40"
-            style={{ color: "var(--text-sub)" }}
-          >
-            <Archive size={14} />
-            Archivar
-          </button>
-        </div>
-      )}
+      <button
+        onClick={() => onEdit(account)}
+        aria-label={`Editar cuenta ${account.name}`}
+        className="w-10 h-10 flex items-center justify-center shrink-0 rounded-xl transition-colors hover:bg-white/10"
+        style={{ color: "var(--text-dim)" }}
+      >
+        <Pencil size={15} />
+      </button>
     </div>
   );
 }

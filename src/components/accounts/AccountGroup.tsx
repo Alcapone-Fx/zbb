@@ -8,10 +8,7 @@ interface Props {
   totalLabel: string;
   accounts: AccountWithBalance[];
   isOffBudget?: boolean;
-  archivingId: string | null;
   onEdit: (account: AccountWithBalance) => void;
-  onArchive: (account: AccountWithBalance) => void;
-  onReconcile: (account: AccountWithBalance) => void;
 }
 
 export function AccountGroup({
@@ -19,10 +16,7 @@ export function AccountGroup({
   totalLabel,
   accounts,
   isOffBudget,
-  archivingId,
   onEdit,
-  onArchive,
-  onReconcile,
 }: Props) {
   if (accounts.length === 0) return null;
 
@@ -61,9 +55,6 @@ export function AccountGroup({
                 account={account}
                 isOffBudget
                 onEdit={onEdit}
-                onArchive={onArchive}
-                onReconcile={onReconcile}
-                archiving={archivingId === account.id}
               />
             </div>
           ))}
@@ -82,9 +73,6 @@ export function AccountGroup({
               <AccountCard
                 account={account}
                 onEdit={onEdit}
-                onArchive={onArchive}
-                onReconcile={onReconcile}
-                archiving={archivingId === account.id}
               />
             </div>
           ))}
