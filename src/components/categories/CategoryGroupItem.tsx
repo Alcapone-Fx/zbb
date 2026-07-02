@@ -103,7 +103,7 @@ function SortableGroupHeader({
           >
             Sistema
           </span>
-          <button onClick={onToggle} className="p-1" style={{ color: 'var(--text-dim)' }}>
+          <button onClick={onToggle} className="p-1" style={{ color: 'var(--text-sub)' }}>
             {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </button>
         </div>
@@ -129,7 +129,7 @@ function SortableGroupHeader({
           {...listeners}
           aria-label="Reordenar grupo"
           className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0 p-0.5 rounded"
-          style={{ color: 'var(--text-dim)' }}
+          style={{ color: 'var(--text-sub)' }}
         >
           <GripVertical size={16} />
         </button>
@@ -148,8 +148,8 @@ function SortableGroupHeader({
             <span
               className="text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
               style={{
-                background: 'var(--color-accent-muted)',
-                color: 'var(--color-accent)',
+                background: 'var(--ab)',
+                color: 'var(--ac)',
               }}
             >
               {group.ideal_percentage}%
@@ -202,7 +202,7 @@ function SortableGroupHeader({
           </button>
         </div>
 
-        <button onClick={onToggle} className="p-1 flex-shrink-0" style={{ color: 'var(--text-dim)' }}>
+        <button onClick={onToggle} className="p-1 flex-shrink-0" style={{ color: 'var(--text-sub)' }}>
           {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </button>
       </div>
