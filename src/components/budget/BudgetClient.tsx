@@ -37,7 +37,7 @@ export function BudgetClient({ initialMonth, initialData }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [trendsCategory, setTrendsCategory] = useState<string | null>(null)
 
-  const { isStale, clearStale, markStale } = useBudgetStore()
+  const { staleAfter, isStale, clearStale, markStale } = useBudgetStore()
 
   const fetchMonth = useCallback(async (m: string) => {
     setLoading(true)
@@ -67,6 +67,13 @@ export function BudgetClient({ initialMonth, initialData }: Props) {
       fetchMonth(initialMonth)
     }
   }, [fetchMonth, initialData, initialMonth])
+
+  // Re-fetch when a transaction added from the FAB marks the budget stale
+  useEffect(() => {
+    if (staleAfter !== null && month >= staleAfter) {
+      fetchMonth(month)
+    }
+  }, [staleAfter, month, fetchMonth])
 
   async function handleMonthChange(m: string) {
     setMonth(m)

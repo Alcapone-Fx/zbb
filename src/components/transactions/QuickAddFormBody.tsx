@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
+import { useBudgetStore } from "@/stores/budget.store";
 import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
 import type { CreateTransactionInput } from "@/types/transaction";
@@ -21,6 +22,7 @@ const TYPE_LABELS: Record<TxType, string> = {
 
 export function QuickAddFormBody({ onClose }: Props) {
   const router = useRouter();
+  const { markStale } = useBudgetStore();
 
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [groups, setGroups] = useState<CategoryGroupWithCategories[]>([]);
@@ -175,6 +177,8 @@ export function QuickAddFormBody({ onClose }: Props) {
       if (!res.ok) {
         setError(json.error ?? "Error al guardar");
       } else {
+        // Mark budget stale so BudgetClient refetches if it's open
+        markStale(date.slice(0, 7));
         router.refresh();
         onClose();
       }
