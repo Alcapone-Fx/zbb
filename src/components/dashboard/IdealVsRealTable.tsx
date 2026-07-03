@@ -41,58 +41,74 @@ export function IdealVsRealTable({ rows }: Props) {
     >
       {/* Header */}
       <div
-        className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-4 py-2.5 text-[11px] font-semibold"
+        className="grid px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide"
         style={{
+          gridTemplateColumns: '1fr 40px 48px 52px',
+          gap: '8px',
           background: 'var(--bg-elevated)',
           color: 'var(--text-dim)',
           borderBottom: '1px solid var(--border-card)',
         }}
       >
         <span>Grupo</span>
-        <span className="text-right w-14">Ideal</span>
-        <span className="text-right w-16">Real</span>
+        <span className="text-right">Ideal</span>
+        <span className="text-right">Real</span>
+        <span className="text-right">Posición</span>
       </div>
 
       {/* Rows */}
       {rows.map((row, i) => {
-        const over = row.real_pct > row.ideal_pct
-        const indicatorColor = over ? 'var(--color-negative)' : 'var(--color-positive)'
+        const delta = row.real_pct - row.ideal_pct
+        const deltaColor = delta >= 0 ? 'var(--color-positive)' : 'var(--color-negative)'
+        const realColor = row.real_pct > 0 ? 'var(--text-main)' : 'var(--text-dim)'
+
         return (
           <div
             key={row.group_id}
-            className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-4 py-3 items-center"
+            className="grid px-4 py-3 items-center"
             style={{
+              gridTemplateColumns: '1fr 40px 48px 52px',
+              gap: '8px',
               background: i % 2 === 0 ? 'var(--bg-card)' : 'var(--bg-elevated)',
               borderTop: i > 0 ? '1px solid var(--border-card)' : undefined,
             }}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ background: indicatorColor }}
-              />
-              <span
-                className="text-sm font-medium truncate"
-                style={{ color: 'var(--text-main)' }}
-              >
-                {row.group_name}
-              </span>
-            </div>
+            {/* Group name */}
             <span
-              className="text-sm font-semibold text-right w-14"
+              className="text-xs font-medium truncate"
+              style={{ color: 'var(--text-main)' }}
+            >
+              {row.group_name}
+            </span>
+
+            {/* Ideal % */}
+            <span
+              className="text-xs text-right tabular-nums"
               style={{ color: 'var(--text-sub)' }}
             >
               {row.ideal_pct}%
             </span>
-            <div className="text-right w-16">
-              <span
-                className="text-sm font-bold"
-                style={{ color: indicatorColor }}
+
+            {/* Real % + amount */}
+            <div className="text-right">
+              <p
+                className="text-xs font-bold tabular-nums"
+                style={{ color: realColor }}
               >
                 {row.real_pct.toFixed(1)}%
-              </span>
-              <p className="text-[10px]" style={{ color: 'var(--text-dim)' }}>
+              </p>
+              <p className="text-[10px] tabular-nums" style={{ color: 'var(--text-dim)' }}>
                 {formatAmount(row.real_amount)}
+              </p>
+            </div>
+
+            {/* Posición (delta) */}
+            <div className="text-right">
+              <p
+                className="text-xs font-bold tabular-nums"
+                style={{ color: deltaColor }}
+              >
+                {delta >= 0 ? '+' : ''}{delta.toFixed(1)}%
               </p>
             </div>
           </div>

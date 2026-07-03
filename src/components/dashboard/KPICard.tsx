@@ -50,7 +50,7 @@ export function KPICard({ label, amount, pct, variant = 'default', alwaysLive }:
       </p>
       {pct != null && (
         <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
-          {pct >= 0 ? '+' : ''}{pct.toFixed(1)}% del ingreso
+          {pct.toFixed(1)}% del ingreso
         </p>
       )}
     </div>

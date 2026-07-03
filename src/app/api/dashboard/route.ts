@@ -126,8 +126,8 @@ export async function GET(req: Request) {
   }
 
   const savings = net_income - total_expense
-  const expense_pct = net_income > 0 ? Math.round((total_expense / net_income) * 10000) / 100 : 0
-  const savings_pct = net_income > 0 ? Math.round((savings / net_income) * 10000) / 100 : 0
+  const expense_pct = net_income > 0 ? Math.round((total_expense / net_income) * 10000) / 100 : null
+  const savings_pct = net_income > 0 ? Math.round((savings / net_income) * 10000) / 100 : null
 
   const ideal_vs_real = computeIdealVsReal(
     groupsWithIdeal.map((g) => ({
