@@ -641,3 +641,4 @@
 | `20260628000001_initial_schema.sql` | M00 | M00 agent | ✅ applied (2026-06-29) |
 | `20260701000001_feedback_rate_limit.sql` | feedback widget | main session | ✅ applied (2026-07-02) |
 | `20260703000001_cc_payment_linked_account.sql` | CC payment tracking | main session | ⏳ PENDING |
+| `20260703000002_sinking_fund_groups.sql` | Sinking Fund Groups redesign | worktree agent | ⏳ PENDING |
