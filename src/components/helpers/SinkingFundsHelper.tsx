@@ -698,29 +698,44 @@ export function SinkingFundsHelper() {
             {groupEditingId ? 'Editar grupo' : 'Nuevo grupo'}
           </p>
 
-          <input
-            type="text"
-            placeholder="Nombre del grupo (ej. Anuales)"
-            value={groupForm.name}
-            onChange={(e) => setGroupForm((f) => ({ ...f, name: e.target.value }))}
-            autoComplete="off"
-            className={inputClass}
-            style={inputStyle}
-          />
+          <div className="space-y-1">
+            <input
+              type="text"
+              placeholder="Nombre del grupo (ej. Anuales)"
+              value={groupForm.name}
+              onChange={(e) => setGroupForm((f) => ({ ...f, name: e.target.value }))}
+              autoComplete="off"
+              className={inputClass}
+              style={inputStyle}
+            />
+            <p className="text-xs px-1" style={{ color: 'var(--text-dim)' }}>
+              Nombre descriptivo para agrupar tus metas. Puedes tener varios grupos (ej. Anuales, Plurianuales, Vacaciones).
+            </p>
+          </div>
 
-          <AppSelect
-            value={groupForm.category_id}
-            onChange={(v) => setGroupForm((f) => ({ ...f, category_id: v }))}
-            placeholder="Categoría presupuestal (opcional)"
-            options={categories.map((c) => ({ value: c.id, label: c.name, sub: c.group_name }))}
-          />
+          <div className="space-y-1">
+            <AppSelect
+              value={groupForm.category_id}
+              onChange={(v) => setGroupForm((f) => ({ ...f, category_id: v }))}
+              placeholder="Categoría presupuestal (opcional)"
+              options={categories.map((c) => ({ value: c.id, label: c.name, sub: c.group_name }))}
+            />
+            <p className="text-xs px-1" style={{ color: 'var(--text-dim)' }}>
+              Categoría de tu presupuesto donde asignas el ahorro mensual del grupo (ej. "Fondo Anual"). Un solo renglón en el presupuesto para todas las metas del grupo.
+            </p>
+          </div>
 
-          <AppSelect
-            value={groupForm.source_account_id}
-            onChange={(v) => setGroupForm((f) => ({ ...f, source_account_id: v }))}
-            placeholder="Cuenta de origen (opcional)"
-            options={accounts.map((a) => ({ value: a.id, label: a.name }))}
-          />
+          <div className="space-y-1">
+            <AppSelect
+              value={groupForm.source_account_id}
+              onChange={(v) => setGroupForm((f) => ({ ...f, source_account_id: v }))}
+              placeholder="Cuenta de origen (opcional)"
+              options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+            />
+            <p className="text-xs px-1" style={{ color: 'var(--text-dim)' }}>
+              Cuenta de ahorro donde vive físicamente el dinero de este grupo (ej. la cuenta al 3.5%). Cuando marcas una meta como pagada, el gasto se registra automáticamente desde aquí.
+            </p>
+          </div>
 
           {groupFormError && <p className="text-sm text-red-500">{groupFormError}</p>}
 
@@ -804,14 +819,21 @@ export function SinkingFundsHelper() {
             options={groups.map((g) => ({ value: g.id, label: g.name }))}
           />
 
-          <AppSelect
-            value={fundForm.recurrence}
-            onChange={(v) => setFundForm((f) => ({ ...f, recurrence: v as 'one_time' | 'annual' }))}
-            options={[
-              { value: 'one_time', label: 'Una vez' },
-              { value: 'annual', label: 'Anual', sub: 'Se renueva cada año automáticamente' },
-            ]}
-          />
+          <div className="space-y-1">
+            <AppSelect
+              value={fundForm.recurrence}
+              onChange={(v) => setFundForm((f) => ({ ...f, recurrence: v as 'one_time' | 'annual' }))}
+              options={[
+                { value: 'one_time', label: 'Una vez', sub: 'Se archiva al marcarse como pagada' },
+                { value: 'annual', label: 'Anual', sub: 'Al pagar, la fecha objetivo avanza un año automáticamente' },
+              ]}
+            />
+            <p className="text-xs px-1" style={{ color: 'var(--text-dim)' }}>
+              {fundForm.recurrence === 'annual'
+                ? 'Ideal para gastos que se repiten cada año: seguro, mantenimiento, cumpleaños, etc.'
+                : 'Ideal para metas únicas: remodelar, comprar un artículo, viaje puntual, etc.'}
+            </p>
+          </div>
 
           <input
             type="text"
