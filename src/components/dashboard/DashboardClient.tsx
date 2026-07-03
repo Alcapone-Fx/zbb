@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { PeriodSelector } from './PeriodSelector'
 import { KPICard } from './KPICard'
 import { SpendingDonut } from './SpendingDonut'
+import { NetWorthChart } from './NetWorthChart'
 import { IdealVsRealTable } from './IdealVsRealTable'
 import type { DashboardData, DashboardPeriod } from '@/types/dashboard'
 
@@ -124,6 +125,9 @@ export function DashboardClient() {
       {!loading && (
         <SpendingDonut rows={data.group_breakdown} totalExpense={data.total_expense} />
       )}
+
+      {/* Net worth trend */}
+      <NetWorthChart />
 
       {/* Ideal vs. Real */}
       {!loading && (
