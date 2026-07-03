@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { PeriodSelector } from './PeriodSelector'
 import { KPICard } from './KPICard'
+import { SpendingDonut } from './SpendingDonut'
 import { IdealVsRealTable } from './IdealVsRealTable'
 import type { DashboardData, DashboardPeriod } from '@/types/dashboard'
 
@@ -14,6 +15,7 @@ const EMPTY_DATA: DashboardData = {
   savings: 0,
   savings_pct: 0,
   net_worth: 0,
+  group_breakdown: [],
   ideal_vs_real: [],
 }
 
@@ -116,6 +118,11 @@ export function DashboardClient() {
             alwaysLive
           />
         </div>
+      )}
+
+      {/* Spending donut */}
+      {!loading && (
+        <SpendingDonut rows={data.group_breakdown} totalExpense={data.total_expense} />
       )}
 
       {/* Ideal vs. Real */}

@@ -4,7 +4,7 @@ import { dashboardPeriodSchema } from '@/types/dashboard'
 import { computePeriodDateRange, computeIdealVsReal } from '@/lib/zbb/dashboard'
 import { computeNetWorth } from '@/lib/zbb/accounts'
 import type { AccountWithBalance } from '@/types/account'
-import type { DashboardData } from '@/types/dashboard'
+import type { DashboardData, GroupBreakdownRow } from '@/types/dashboard'
 
 export async function GET(req: Request) {
   const supabase = await createClient()
@@ -22,8 +22,8 @@ export async function GET(req: Request) {
   const period = parsed.data
   const { from, to } = computePeriodDateRange(period)
 
-  // Parallel: accounts (for net worth), transactions (for KPIs), groups (for ideal%)
-  const [accountsRes, txRes, groupsRes] = await Promise.all([
+  // Parallel: accounts (for net worth), transactions (for KPIs), groups
+  const [accountsRes, txRes, groupsRes, allGroupsRes] = await Promise.all([
     supabase
       .from('accounts')
       .select('id, name, type, is_tracking_only, is_archived, starting_balance, created_at')
@@ -44,10 +44,18 @@ export async function GET(req: Request) {
       .eq('is_system', false)
       .eq('is_archived', false)
       .not('ideal_percentage', 'is', null),
+
+    supabase
+      .from('category_groups')
+      .select('id, name')
+      .eq('user_id', user.id)
+      .eq('is_system', false)
+      .eq('is_archived', false)
+      .order('display_order', { ascending: true }),
   ])
 
-  if (accountsRes.error || txRes.error || groupsRes.error) {
-    console.error('GET /api/dashboard error', accountsRes.error, txRes.error, groupsRes.error)
+  if (accountsRes.error || txRes.error || groupsRes.error || allGroupsRes.error) {
+    console.error('GET /api/dashboard error', accountsRes.error, txRes.error, groupsRes.error, allGroupsRes.error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
@@ -108,6 +116,7 @@ export async function GET(req: Request) {
 
   const groupsWithIdeal = groupsRes.data ?? []
   const groupsWithIdealIds = new Set(groupsWithIdeal.map((g) => g.id))
+  const allGroupSpendingMap: Record<string, number> = {}
 
   for (const tx of periodTx) {
     const amount = Number(tx.amount)
@@ -119,11 +128,13 @@ export async function GET(req: Request) {
       net_income += amount
     } else if (tx.type === 'expense') {
       total_expense += Math.abs(amount)
-      // Track spending per group (only groups with ideal_percentage set)
       if (tx.category_id) {
         const gid = catGroupMap[tx.category_id]
-        if (gid && groupsWithIdealIds.has(gid)) {
-          groupSpendingMap[gid] = (groupSpendingMap[gid] ?? 0) + Math.abs(amount)
+        if (gid) {
+          allGroupSpendingMap[gid] = (allGroupSpendingMap[gid] ?? 0) + Math.abs(amount)
+          if (groupsWithIdealIds.has(gid)) {
+            groupSpendingMap[gid] = (groupSpendingMap[gid] ?? 0) + Math.abs(amount)
+          }
         }
       }
     }
@@ -143,6 +154,18 @@ export async function GET(req: Request) {
     net_income
   )
 
+  const allGroups = allGroupsRes.data ?? []
+  const group_breakdown: GroupBreakdownRow[] = allGroups
+    .map((g) => ({
+      group_id: g.id,
+      group_name: g.name,
+      amount: allGroupSpendingMap[g.id] ?? 0,
+      pct: net_income > 0
+        ? Math.round(((allGroupSpendingMap[g.id] ?? 0) / net_income) * 10000) / 100
+        : 0,
+    }))
+    .filter((g) => g.amount > 0)
+
   const data: DashboardData = {
     period,
     net_income,
@@ -151,6 +174,7 @@ export async function GET(req: Request) {
     savings,
     savings_pct,
     net_worth,
+    group_breakdown,
     ideal_vs_real,
   }
 

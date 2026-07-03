@@ -7,6 +7,13 @@ export const dashboardPeriodSchema = z
   .enum(DASHBOARD_PERIODS)
   .default('current_month')
 
+export interface GroupBreakdownRow {
+  group_id: string
+  group_name: string
+  amount: number
+  pct: number
+}
+
 export interface IdealVsRealRow {
   group_id: string
   group_name: string
@@ -23,5 +30,6 @@ export interface DashboardData {
   savings: number
   savings_pct: number
   net_worth: number
+  group_breakdown: GroupBreakdownRow[]
   ideal_vs_real: IdealVsRealRow[]
 }
