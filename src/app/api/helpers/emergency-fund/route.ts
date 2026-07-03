@@ -40,7 +40,7 @@ export async function GET() {
     id: a.id,
     name: a.name,
     type: a.type,
-    balance: Number(a.starting_balance) + (balanceMap[a.id] ?? 0),
+    balance: balanceMap[a.id] ?? 0,
   }))
 
   const total_balance = accounts.reduce((sum, a) => sum + a.balance, 0)
