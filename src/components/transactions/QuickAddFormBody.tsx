@@ -7,6 +7,7 @@ import { useBudgetStore } from "@/stores/budget.store";
 import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
 import type { CreateTransactionInput } from "@/types/transaction";
+import { AppSelect } from "@/components/ui/AppSelect";
 
 interface Props {
   onClose: () => void;
@@ -259,26 +260,15 @@ export function QuickAddFormBody({ onClose }: Props) {
               border: "1px solid var(--border-card)",
             }}
           />
-          <select
+          <AppSelect
             value={accountId}
-            onChange={(e) => {
-              setAccountId(e.target.value);
+            onChange={(v) => {
+              setAccountId(v);
               setCategoryId("");
             }}
-            required
-            className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-            style={{
-              background: "var(--bg-elevated)",
-              color: "var(--text-main)",
-              border: "1px solid var(--border-card)",
-            }}
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+            placeholder="Seleccionar cuenta"
+            options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+          />
         </div>
       ) : (
         <>
@@ -302,23 +292,12 @@ export function QuickAddFormBody({ onClose }: Props) {
               >
                 Origen
               </label>
-              <select
+              <AppSelect
                 value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-                required
-                className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-                style={{
-                  background: "var(--bg-elevated)",
-                  color: "var(--text-main)",
-                  border: "1px solid var(--border-card)",
-                }}
-              >
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setAccountId}
+                placeholder="Seleccionar cuenta"
+                options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <label
@@ -327,26 +306,14 @@ export function QuickAddFormBody({ onClose }: Props) {
               >
                 Destino
               </label>
-              <select
+              <AppSelect
                 value={transferToAccountId}
-                onChange={(e) => setTransferToAccountId(e.target.value)}
-                required
-                className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-                style={{
-                  background: "var(--bg-elevated)",
-                  color: "var(--text-main)",
-                  border: "1px solid var(--border-card)",
-                }}
-              >
-                <option value="">Seleccionar</option>
-                {accounts
+                onChange={setTransferToAccountId}
+                placeholder="Seleccionar"
+                options={accounts
                   .filter((a) => a.id !== accountId)
-                  .map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-              </select>
+                  .map((a) => ({ value: a.id, label: a.name }))}
+              />
             </div>
           </div>
         </>
@@ -361,32 +328,16 @@ export function QuickAddFormBody({ onClose }: Props) {
           >
             {type === "income" ? "Categoría (opcional)" : "Categoría"}
           </label>
-          <select
+          <AppSelect
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            required={type === "expense" && isOnBudget}
-            className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-            style={{
-              background: "var(--bg-elevated)",
-              color: "var(--text-main)",
-              border: "1px solid var(--border-card)",
-            }}
-          >
-            <option value="">
-              {type === "income" ? "Dinero a Asignar" : "Seleccionar categoría"}
-            </option>
-            {userGroups.map((g) => (
-              <optgroup key={g.id} label={g.name}>
-                {g.categories
-                  .filter((c) => !c.is_system && !c.is_archived)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
+            onChange={setCategoryId}
+            placeholder={type === "income" ? "Dinero a Asignar" : "Seleccionar categoría"}
+            options={userGroups.flatMap((g) =>
+              g.categories
+                .filter((c) => !c.is_system && !c.is_archived)
+                .map((c) => ({ value: c.id, label: c.name, sub: g.name }))
+            )}
+          />
         </div>
       )}
 
@@ -399,29 +350,16 @@ export function QuickAddFormBody({ onClose }: Props) {
           >
             Categoría (si alguna cuenta está en presupuesto)
           </label>
-          <select
+          <AppSelect
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-            style={{
-              background: "var(--bg-elevated)",
-              color: "var(--text-main)",
-              border: "1px solid var(--border-card)",
-            }}
-          >
-            <option value="">Sin categoría</option>
-            {userGroups.map((g) => (
-              <optgroup key={g.id} label={g.name}>
-                {g.categories
-                  .filter((c) => !c.is_system && !c.is_archived)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
+            onChange={setCategoryId}
+            placeholder="Sin categoría"
+            options={userGroups.flatMap((g) =>
+              g.categories
+                .filter((c) => !c.is_system && !c.is_archived)
+                .map((c) => ({ value: c.id, label: c.name, sub: g.name }))
+            )}
+          />
         </div>
       )}
 
