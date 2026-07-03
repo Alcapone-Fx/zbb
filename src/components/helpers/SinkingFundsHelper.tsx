@@ -721,7 +721,7 @@ export function SinkingFundsHelper() {
               options={categories.map((c) => ({ value: c.id, label: c.name, sub: c.group_name }))}
             />
             <p className="text-xs px-1" style={{ color: 'var(--text-dim)' }}>
-              Categoría de tu presupuesto donde asignas el ahorro mensual del grupo (ej. "Fondo Anual"). Un solo renglón en el presupuesto para todas las metas del grupo.
+              Categoría de tu presupuesto donde asignas el ahorro mensual del grupo (ej. &ldquo;Fondo Anual&rdquo;). Un solo renglón en el presupuesto para todas las metas del grupo.
             </p>
           </div>
 

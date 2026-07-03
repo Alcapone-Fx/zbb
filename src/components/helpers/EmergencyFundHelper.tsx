@@ -238,6 +238,9 @@ export function EmergencyFundHelper() {
               </span>
             </div>
           ))}
+          <p className="text-xs mt-1" style={{ color: 'var(--text-dim)' }}>
+            Configura qué cuentas incluir en Cuentas → Editar cuenta.
+          </p>
         </div>
       )}
 

@@ -64,6 +64,7 @@ export function BudgetClient({ initialMonth, initialData }: Props) {
   // Fetch initial data on mount when no server-side data was provided
   useEffect(() => {
     if (!initialData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchMonth(initialMonth)
     }
   }, [fetchMonth, initialData, initialMonth])
@@ -71,6 +72,7 @@ export function BudgetClient({ initialMonth, initialData }: Props) {
   // Re-fetch when a transaction added from the FAB marks the budget stale
   useEffect(() => {
     if (staleAfter !== null && month >= staleAfter) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchMonth(month)
     }
   }, [staleAfter, month, fetchMonth])

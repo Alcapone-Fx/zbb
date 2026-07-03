@@ -52,6 +52,7 @@ export function FeedbackProvider() {
   // Show iOS permission toast once
   useEffect(() => {
     if (needsIOSPermission) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIosToastVisible(true);
     }
   }, [needsIOSPermission]);

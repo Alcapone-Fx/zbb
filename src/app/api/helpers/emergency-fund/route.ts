@@ -16,11 +16,10 @@ export async function GET() {
       .single(),
     supabase
       .from('accounts')
-      .select('id, name, type, is_tracking_only, starting_balance')
+      .select('id, name, type, is_emergency_fund, starting_balance')
       .eq('user_id', user.id)
-      .eq('is_tracking_only', true)
-      .eq('is_archived', false)
-      .neq('type', 'liability'),
+      .eq('is_emergency_fund', true)
+      .eq('is_archived', false),
     supabase
       .from('transactions')
       .select('account_id, amount')

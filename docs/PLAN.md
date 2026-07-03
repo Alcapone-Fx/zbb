@@ -642,3 +642,4 @@
 | `20260701000001_feedback_rate_limit.sql` | feedback widget | main session | ✅ applied (2026-07-02) |
 | `20260703000001_cc_payment_linked_account.sql` | CC payment tracking | main session | ⏳ PENDING |
 | `20260703000002_sinking_fund_groups.sql` | Sinking Fund Groups redesign | worktree agent | ⏳ PENDING |
+| `20260703000003_account_emergency_fund_flag.sql` | is_emergency_fund flag on accounts | worktree agent | ⏳ PENDING |
