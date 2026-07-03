@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { CheckCircle2 } from "lucide-react";
 import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
+import { AppSelect } from "@/components/ui/AppSelect";
 
 interface Props {
   account: AccountWithBalance | null;
@@ -273,30 +274,16 @@ export function ReconciliationSheet({ account, onClose, onDone }: Props) {
               >
                 Categoría del ajuste
               </label>
-              <select
+              <AppSelect
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                required
-                className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-                style={{
-                  background: "var(--bg-elevated)",
-                  color: "var(--text-main)",
-                  border: "1px solid var(--border-card)",
-                }}
-              >
-                <option value="">Seleccionar categoría</option>
-                {userGroups.map((g) => (
-                  <optgroup key={g.id} label={g.name}>
-                    {g.categories
-                      .filter((c) => !c.is_system && !c.is_archived)
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                  </optgroup>
-                ))}
-              </select>
+                onChange={setCategoryId}
+                placeholder="Seleccionar categoría"
+                options={userGroups.flatMap((g) =>
+                  g.categories
+                    .filter((c) => !c.is_system && !c.is_archived)
+                    .map((c) => ({ value: c.id, label: c.name, sub: g.name }))
+                )}
+              />
             </div>
           )}
         </div>

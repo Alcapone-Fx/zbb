@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { sinkingFundCalc, monthsRemaining } from '@/lib/zbb/helpers-calc'
 import type { SinkingFund, SinkingFundGroup } from '@/types/helpers'
+import { AppSelect } from '@/components/ui/AppSelect'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -707,33 +708,19 @@ export function SinkingFundsHelper() {
             style={inputStyle}
           />
 
-          <select
+          <AppSelect
             value={groupForm.category_id}
-            onChange={(e) => setGroupForm((f) => ({ ...f, category_id: e.target.value }))}
-            className={inputClass}
-            style={inputStyle}
-          >
-            <option value="">Categoría presupuestal (opcional)</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.group_name} · {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setGroupForm((f) => ({ ...f, category_id: v }))}
+            placeholder="Categoría presupuestal (opcional)"
+            options={categories.map((c) => ({ value: c.id, label: c.name, sub: c.group_name }))}
+          />
 
-          <select
+          <AppSelect
             value={groupForm.source_account_id}
-            onChange={(e) => setGroupForm((f) => ({ ...f, source_account_id: e.target.value }))}
-            className={inputClass}
-            style={inputStyle}
-          >
-            <option value="">Cuenta de origen (opcional)</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setGroupForm((f) => ({ ...f, source_account_id: v }))}
+            placeholder="Cuenta de origen (opcional)"
+            options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+          />
 
           {groupFormError && <p className="text-sm text-red-500">{groupFormError}</p>}
 
@@ -810,31 +797,21 @@ export function SinkingFundsHelper() {
             </div>
           </div>
 
-          <select
+          <AppSelect
             value={fundForm.group_id}
-            onChange={(e) => setFundForm((f) => ({ ...f, group_id: e.target.value }))}
-            className={inputClass}
-            style={inputStyle}
-          >
-            <option value="">Sin grupo</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setFundForm((f) => ({ ...f, group_id: v }))}
+            placeholder="Sin grupo"
+            options={groups.map((g) => ({ value: g.id, label: g.name }))}
+          />
 
-          <select
+          <AppSelect
             value={fundForm.recurrence}
-            onChange={(e) =>
-              setFundForm((f) => ({ ...f, recurrence: e.target.value as 'one_time' | 'annual' }))
-            }
-            className={inputClass}
-            style={inputStyle}
-          >
-            <option value="one_time">Una vez</option>
-            <option value="annual">Anual (se renueva cada año)</option>
-          </select>
+            onChange={(v) => setFundForm((f) => ({ ...f, recurrence: v as 'one_time' | 'annual' }))}
+            options={[
+              { value: 'one_time', label: 'Una vez' },
+              { value: 'annual', label: 'Anual', sub: 'Se renueva cada año automáticamente' },
+            ]}
+          />
 
           <input
             type="text"

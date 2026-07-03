@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { WishlistItem, WishlistPriority } from '@/types/helpers'
+import { AppSelect } from '@/components/ui/AppSelect'
 
 const PRIORITY_LABEL: Record<WishlistPriority, string> = {
   high: 'Alta',
@@ -189,17 +190,16 @@ export function WishlistHelper() {
               />
             </div>
 
-            <select
+            <AppSelect
               value={form.priority}
-              onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value as WishlistPriority | '' }))}
-              className="rounded-lg border px-3 py-2 text-sm focus:outline-none"
-              style={{ background: 'var(--bg-app)', borderColor: 'var(--border)', color: 'var(--text-main)' }}
-            >
-              <option value="">Prioridad</option>
-              <option value="high">Alta</option>
-              <option value="medium">Media</option>
-              <option value="low">Baja</option>
-            </select>
+              onChange={(v) => setForm((f) => ({ ...f, priority: v as WishlistPriority | '' }))}
+              placeholder="Prioridad"
+              options={[
+                { value: 'high', label: 'Alta' },
+                { value: 'medium', label: 'Media' },
+                { value: 'low', label: 'Baja' },
+              ]}
+            />
           </div>
 
           <input

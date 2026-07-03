@@ -6,6 +6,7 @@ import type { ScheduledTransaction } from "@/types/scheduled-transaction";
 import { FREQUENCY_LABELS } from "@/types/scheduled-transaction";
 import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
+import { AppSelect } from "@/components/ui/AppSelect";
 
 interface Props {
   item: ScheduledTransaction;
@@ -156,17 +157,12 @@ export function EditScheduledSheet({ item, accounts, groups, onClose, onSaved }:
             <label className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-dim)" }}>
               Cuenta
             </label>
-            <select
+            <AppSelect
               value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              required
-              className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-main)", border: "1px solid var(--border-card)" }}
-            >
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
-            </select>
+              onChange={setAccountId}
+              placeholder="Seleccionar cuenta"
+              options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+            />
           </div>
 
           {/* Category */}
@@ -174,23 +170,16 @@ export function EditScheduledSheet({ item, accounts, groups, onClose, onSaved }:
             <label className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-dim)" }}>
               Categoría
             </label>
-            <select
+            <AppSelect
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-              style={{ background: "var(--bg-elevated)", color: "var(--text-main)", border: "1px solid var(--border-card)" }}
-            >
-              <option value="">Sin categoría</option>
-              {userGroups.map((g) => (
-                <optgroup key={g.id} label={g.name}>
-                  {g.categories
-                    .filter((c) => !c.is_system && !c.is_archived)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                </optgroup>
-              ))}
-            </select>
+              onChange={setCategoryId}
+              placeholder="Sin categoría"
+              options={userGroups.flatMap((g) =>
+                g.categories
+                  .filter((c) => !c.is_system && !c.is_archived)
+                  .map((c) => ({ value: c.id, label: c.name, sub: g.name }))
+              )}
+            />
           </div>
 
           {/* Payee */}

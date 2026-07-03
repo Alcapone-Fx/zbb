@@ -8,6 +8,7 @@ import type { CategoryGroupWithCategories } from "@/types/category";
 import { TransactionRow, formatCurrency } from "./TransactionRow";
 import { EditTransactionSheet } from "./EditTransactionSheet";
 import { ScheduledTransactionsTab } from "./ScheduledTransactionsTab";
+import { AppSelect } from "@/components/ui/AppSelect";
 
 interface TransactionGroup {
   category_id: string | null;
@@ -423,60 +424,33 @@ export function TransactionsClient() {
         {filtersOpen && (
           <div className="flex flex-col gap-2 mb-2">
             {/* Type filter */}
-            <select
+            <AppSelect
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="w-full rounded-xl px-3 py-2 text-xs font-medium outline-none"
-              style={{
-                background: "var(--bg-elevated)",
-                color: "var(--text-main)",
-                border: "1px solid var(--border-card)",
-              }}
-            >
-              <option value="">Todos los tipos</option>
-              <option value="expense">Gastos</option>
-              <option value="income">Ingresos</option>
-              <option value="transfer">Transferencias</option>
-              <option value="adjustment">Ajustes</option>
-            </select>
+              onChange={setFilterType}
+              placeholder="Todos los tipos"
+              options={[
+                { value: 'expense', label: 'Gastos' },
+                { value: 'income', label: 'Ingresos' },
+                { value: 'transfer', label: 'Transferencias' },
+                { value: 'adjustment', label: 'Ajustes' },
+              ]}
+            />
 
             {/* Account filter */}
-            <select
+            <AppSelect
               value={filterAccount}
-              onChange={(e) => setFilterAccount(e.target.value)}
-              className="w-full rounded-xl px-3 py-2 text-xs font-medium outline-none"
-              style={{
-                background: "var(--bg-elevated)",
-                color: "var(--text-main)",
-                border: "1px solid var(--border-card)",
-              }}
-            >
-              <option value="">Todas las cuentas</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+              onChange={setFilterAccount}
+              placeholder="Todas las cuentas"
+              options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+            />
 
             {/* Category filter */}
-            <select
+            <AppSelect
               value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="w-full rounded-xl px-3 py-2 text-xs font-medium outline-none"
-              style={{
-                background: "var(--bg-elevated)",
-                color: "var(--text-main)",
-                border: "1px solid var(--border-card)",
-              }}
-            >
-              <option value="">Todas las categorías</option>
-              {allCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={setFilterCategory}
+              placeholder="Todas las categorías"
+              options={allCategories.map((c) => ({ value: c.id, label: c.name }))}
+            />
           </div>
         )}
 
