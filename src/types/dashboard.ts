@@ -19,9 +19,9 @@ export interface DashboardData {
   period: DashboardPeriod
   net_income: number
   total_expense: number
-  expense_pct: number | null
+  expense_pct: number
   savings: number
-  savings_pct: number | null
+  savings_pct: number
   net_worth: number
   ideal_vs_real: IdealVsRealRow[]
 }

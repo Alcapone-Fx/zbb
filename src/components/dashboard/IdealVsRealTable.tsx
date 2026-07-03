@@ -59,7 +59,6 @@ export function IdealVsRealTable({ rows }: Props) {
       {/* Rows */}
       {rows.map((row, i) => {
         const delta = row.real_pct - row.ideal_pct
-        const deltaColor = delta >= 0 ? 'var(--color-positive)' : 'var(--color-negative)'
         const realColor = row.real_pct > 0 ? 'var(--text-main)' : 'var(--text-dim)'
 
         return (
@@ -102,11 +101,11 @@ export function IdealVsRealTable({ rows }: Props) {
               </p>
             </div>
 
-            {/* Posición (delta) */}
+            {/* Posición (delta real − ideal) */}
             <div className="text-right">
               <p
                 className="text-xs font-bold tabular-nums"
-                style={{ color: deltaColor }}
+                style={{ color: 'var(--text-sub)' }}
               >
                 {delta >= 0 ? '+' : ''}{delta.toFixed(1)}%
               </p>

@@ -111,7 +111,11 @@ export async function GET(req: Request) {
 
   for (const tx of periodTx) {
     const amount = Number(tx.amount)
-    if (tx.type === 'income') {
+    const countsAsIncome =
+      tx.type === 'income' ||
+      tx.type === 'opening_balance' ||
+      (tx.type === 'adjustment' && amount > 0)
+    if (countsAsIncome) {
       net_income += amount
     } else if (tx.type === 'expense') {
       total_expense += Math.abs(amount)
@@ -126,8 +130,8 @@ export async function GET(req: Request) {
   }
 
   const savings = net_income - total_expense
-  const expense_pct = net_income > 0 ? Math.round((total_expense / net_income) * 10000) / 100 : null
-  const savings_pct = net_income > 0 ? Math.round((savings / net_income) * 10000) / 100 : null
+  const expense_pct = net_income > 0 ? Math.round((total_expense / net_income) * 10000) / 100 : 0
+  const savings_pct = net_income > 0 ? Math.round((savings / net_income) * 10000) / 100 : 0
 
   const ideal_vs_real = computeIdealVsReal(
     groupsWithIdeal.map((g) => ({

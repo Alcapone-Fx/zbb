@@ -10,9 +10,9 @@ const EMPTY_DATA: DashboardData = {
   period: 'current_month',
   net_income: 0,
   total_expense: 0,
-  expense_pct: null,
+  expense_pct: 0,
   savings: 0,
-  savings_pct: null,
+  savings_pct: 0,
   net_worth: 0,
   ideal_vs_real: [],
 }
