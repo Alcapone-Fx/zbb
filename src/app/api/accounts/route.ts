@@ -127,6 +127,7 @@ export async function POST(req: Request) {
         name: buildCreditCardCategoryName(name),
         is_system: true,
         display_order: 0,
+        linked_account_id: account.id,
       })
       if (catErr) {
         console.error('POST /api/accounts CC category insert error', catErr)

@@ -54,6 +54,7 @@ export interface Category {
   display_order: number
   is_system: boolean
   is_archived: boolean
+  linked_account_id?: string | null
 }
 
 export interface CategoryGroupWithCategories extends CategoryGroup {

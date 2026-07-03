@@ -61,7 +61,7 @@ export async function GET(req: Request) {
 
     supabase
       .from('categories')
-      .select('id, group_id, name, is_system, is_archived, display_order')
+      .select('id, group_id, name, is_system, is_archived, display_order, linked_account_id')
       .eq('user_id', user.id)
       .eq('is_archived', false)
       .order('display_order', { ascending: true }),
@@ -113,7 +113,7 @@ export async function GET(req: Request) {
     onBudgetIds.length > 0
       ? await supabase
           .from('transactions')
-          .select('category_id, amount, date, type, next_month')
+          .select('category_id, amount, date, type, next_month, account_id')
           .eq('user_id', user.id)
           .in('account_id', onBudgetIds)
           .gte('date', fetchFrom)
@@ -155,6 +155,35 @@ export async function GET(req: Request) {
         incomeThisMonth += amount
       } else if (txMonth === prevMonth && tx.next_month) {
         incomeLastMonthNextFlag += amount
+      }
+    }
+  }
+
+  // CC payment tracking: for each category linked to a CC account, inject activity
+  // = -(net of expense + transfer amounts on that CC account for the month).
+  // Spending on CC (negative expense) → payment category gets positive activity (owed).
+  // Transfer to CC (positive) → payment category gets negative activity (paid).
+  const ccPaymentCats = allCats.filter((c) => c.linked_account_id)
+  if (ccPaymentCats.length > 0) {
+    // Build per-CC-account net activity map: month → accountId → sum(amount)
+    const ccAcctMap: Record<string, Record<string, number>> = {}
+    for (const tx of allTx) {
+      if (tx.type !== 'expense' && tx.type !== 'transfer') continue
+      const txMonth = tx.date.slice(0, 7)
+      if (txMonth < earliestMonth || txMonth > targetMonth) continue
+      const acctId = tx.account_id
+      if (!acctId) continue
+      if (!ccAcctMap[txMonth]) ccAcctMap[txMonth] = {}
+      ccAcctMap[txMonth][acctId] = (ccAcctMap[txMonth][acctId] ?? 0) + Number(tx.amount)
+    }
+    // Inject payment category activity: negative net CC amount = amount owed
+    for (const cat of ccPaymentCats) {
+      const linkedId = cat.linked_account_id!
+      for (const month of sortedMonths) {
+        const netCC = ccAcctMap[month]?.[linkedId] ?? 0
+        if (netCC === 0) continue
+        if (!activitiesMap[month]) activitiesMap[month] = {}
+        activitiesMap[month][cat.id] = (activitiesMap[month][cat.id] ?? 0) + -netCC
       }
     }
   }
