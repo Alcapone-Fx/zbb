@@ -1,30 +1,66 @@
 import { z } from 'zod'
 
+// ── Sinking Fund Groups ────────────────────────────────────────────────────
+
+export interface SinkingFundGroup {
+  id: string
+  user_id: string
+  name: string
+  category_id: string | null
+  category_name: string | null
+  source_account_id: string | null
+  source_account_name: string | null
+  display_order: number
+}
+
+export const createSinkingFundGroupSchema = z.object({
+  name: z.string().min(1).max(100),
+  category_id: z.string().uuid().nullable().optional(),
+  source_account_id: z.string().uuid().nullable().optional(),
+})
+export const updateSinkingFundGroupSchema = createSinkingFundGroupSchema.partial()
+export type CreateSinkingFundGroupInput = z.infer<typeof createSinkingFundGroupSchema>
+export type UpdateSinkingFundGroupInput = z.infer<typeof updateSinkingFundGroupSchema>
+
 // ── Sinking Funds ──────────────────────────────────────────────────────────
 
 export interface SinkingFund {
   id: string
   user_id: string
-  category_id: string
-  category_name: string
+  group_id: string | null
+  category_id: string | null
+  category_name: string | null
   name: string
   target_amount: number
   target_date: string  // YYYY-MM-DD
+  recurrence: 'one_time' | 'annual'
+  is_paid: boolean
+  last_paid_amount: number | null
+  last_paid_date: string | null
   notes: string | null
 }
 
 export const createSinkingFundSchema = z.object({
-  category_id: z.string().uuid(),
+  group_id: z.string().uuid().nullable().optional(),
+  category_id: z.string().uuid().nullable().optional(),
   name: z.string().min(1).max(100),
   target_amount: z.number().positive(),
   target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)'),
+  recurrence: z.enum(['one_time', 'annual']).default('one_time'),
   notes: z.string().max(500).nullable().optional(),
 })
 
-export const updateSinkingFundSchema = createSinkingFundSchema.partial()
+export const updateSinkingFundSchema = createSinkingFundSchema.partial().extend({
+  is_paid: z.boolean().optional(),
+})
 
 export type CreateSinkingFundInput = z.infer<typeof createSinkingFundSchema>
 export type UpdateSinkingFundInput = z.infer<typeof updateSinkingFundSchema>
+
+export const paySchema = z.object({
+  amount: z.number().positive(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
 
 // ── Wishlist ───────────────────────────────────────────────────────────────
 
