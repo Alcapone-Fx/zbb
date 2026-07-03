@@ -45,6 +45,7 @@ export function DashboardClient() {
 
   // Fetch current month on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPeriod('current_month')
   }, [fetchPeriod])
 

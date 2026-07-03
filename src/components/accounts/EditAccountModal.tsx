@@ -19,9 +19,17 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
   const [archiving, setArchiving] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
 
+  const [isTrackingOnly, setIsTrackingOnly] = useState(false);
+  const [isEmergencyFund, setIsEmergencyFund] = useState(false);
+  const [savingBudgetType, setSavingBudgetType] = useState(false);
+  const [savingEmergencyFund, setSavingEmergencyFund] = useState(false);
+
   useEffect(() => {
     if (account) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(account.name);
+      setIsTrackingOnly(account.is_tracking_only);
+      setIsEmergencyFund(account.is_emergency_fund);
       setError(null);
       setArchiveError(null);
     }
@@ -54,6 +62,50 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
     }
   }
 
+  async function handleSetBudgetType(newIsTrackingOnly: boolean) {
+    if (!account || savingBudgetType) return;
+    setSavingBudgetType(true);
+    try {
+      const res = await fetch(`/api/accounts/${account.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_budget_type", is_tracking_only: newIsTrackingOnly }),
+      });
+      if (res.ok) {
+        setIsTrackingOnly(newIsTrackingOnly);
+        // If switching to on-budget, clear the emergency fund flag locally
+        if (!newIsTrackingOnly) {
+          setIsEmergencyFund(false);
+        }
+        onSaved();
+      }
+    } catch {
+      // silently ignore — UI stays at previous state
+    } finally {
+      setSavingBudgetType(false);
+    }
+  }
+
+  async function handleSetEmergencyFund(newIsEmergencyFund: boolean) {
+    if (!account || savingEmergencyFund) return;
+    setSavingEmergencyFund(true);
+    try {
+      const res = await fetch(`/api/accounts/${account.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_emergency_fund", is_emergency_fund: newIsEmergencyFund }),
+      });
+      if (res.ok) {
+        setIsEmergencyFund(newIsEmergencyFund);
+        onSaved();
+      }
+    } catch {
+      // silently ignore — UI stays at previous state
+    } finally {
+      setSavingEmergencyFund(false);
+    }
+  }
+
   async function handleArchive() {
     if (!onArchive) return;
     setArchiveError(null);
@@ -69,6 +121,8 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
   }
 
   if (!account) return null;
+
+  const isCreditCard = account.type === "credit_card";
 
   return (
     <div
@@ -155,6 +209,126 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
             {submitting ? "Guardando..." : "Guardar nombre"}
           </button>
         </form>
+
+        {/* Budget type toggle — hidden for credit_card */}
+        {!isCreditCard && (
+          <div
+            className="mt-5 pt-4 flex flex-col gap-2"
+            style={{ borderTop: "1px solid var(--border-card)" }}
+          >
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-dim)" }}>
+              Tipo de presupuesto
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={savingBudgetType}
+                onClick={() => { if (isTrackingOnly) handleSetBudgetType(false); }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-50"
+                style={
+                  !isTrackingOnly
+                    ? {
+                        background: "var(--ab)",
+                        color: "var(--ac)",
+                        border: "1px solid var(--aB)",
+                      }
+                    : {
+                        background: "var(--bg-elevated)",
+                        color: "var(--text-sub)",
+                        border: "1px solid transparent",
+                      }
+                }
+              >
+                On Budget
+              </button>
+              <button
+                type="button"
+                disabled={savingBudgetType}
+                onClick={() => { if (!isTrackingOnly) handleSetBudgetType(true); }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-50"
+                style={
+                  isTrackingOnly
+                    ? {
+                        background: "var(--ab)",
+                        color: "var(--ac)",
+                        border: "1px solid var(--aB)",
+                      }
+                    : {
+                        background: "var(--bg-elevated)",
+                        color: "var(--text-sub)",
+                        border: "1px solid transparent",
+                      }
+                }
+              >
+                Off Budget
+              </button>
+            </div>
+            <p className="text-xs" style={{ color: "var(--text-sub)" }}>
+              {!isTrackingOnly
+                ? "Los movimientos de esta cuenta afectan tu presupuesto."
+                : "Solo seguimiento — no afecta el presupuesto ni el Dinero a Asignar."}
+            </p>
+          </div>
+        )}
+
+        {/* Emergency fund toggle — shown only for off-budget accounts */}
+        {isTrackingOnly && (
+          <div
+            className="mt-5 pt-4 flex flex-col gap-2"
+            style={{ borderTop: "1px solid var(--border-card)" }}
+          >
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-dim)" }}>
+              Fondo de Emergencia
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={savingEmergencyFund}
+                onClick={() => { if (!isEmergencyFund) handleSetEmergencyFund(true); }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-50"
+                style={
+                  isEmergencyFund
+                    ? {
+                        background: "var(--ab)",
+                        color: "var(--ac)",
+                        border: "1px solid var(--aB)",
+                      }
+                    : {
+                        background: "var(--bg-elevated)",
+                        color: "var(--text-sub)",
+                        border: "1px solid transparent",
+                      }
+                }
+              >
+                Incluir
+              </button>
+              <button
+                type="button"
+                disabled={savingEmergencyFund}
+                onClick={() => { if (isEmergencyFund) handleSetEmergencyFund(false); }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-50"
+                style={
+                  !isEmergencyFund
+                    ? {
+                        background: "var(--ab)",
+                        color: "var(--ac)",
+                        border: "1px solid var(--aB)",
+                      }
+                    : {
+                        background: "var(--bg-elevated)",
+                        color: "var(--text-sub)",
+                        border: "1px solid transparent",
+                      }
+                }
+              >
+                Excluir
+              </button>
+            </div>
+            <p className="text-xs" style={{ color: "var(--text-sub)" }}>
+              Incluye esta cuenta en el cálculo del Fondo de Emergencia.
+            </p>
+          </div>
+        )}
 
         {/* Secondary actions */}
         {(onReconcile || onArchive) && (

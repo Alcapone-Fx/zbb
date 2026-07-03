@@ -80,5 +80,35 @@ export async function PATCH(
     return NextResponse.json({ data: { success: true } })
   }
 
+  if (parsed.data.action === 'set_budget_type') {
+    const { error } = await supabase
+      .from('accounts')
+      .update({ is_tracking_only: parsed.data.is_tracking_only })
+      .eq('id', id)
+      .eq('user_id', user.id)
+
+    if (error) {
+      console.error('PATCH /api/accounts/[id] set_budget_type error', error)
+      return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+    }
+
+    return NextResponse.json({ data: { success: true } })
+  }
+
+  if (parsed.data.action === 'set_emergency_fund') {
+    const { error } = await supabase
+      .from('accounts')
+      .update({ is_emergency_fund: parsed.data.is_emergency_fund })
+      .eq('id', id)
+      .eq('user_id', user.id)
+
+    if (error) {
+      console.error('PATCH /api/accounts/[id] set_emergency_fund error', error)
+      return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+    }
+
+    return NextResponse.json({ data: { success: true } })
+  }
+
   return NextResponse.json({ error: 'Acción no reconocida' }, { status: 400 })
 }

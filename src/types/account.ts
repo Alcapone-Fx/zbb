@@ -14,6 +14,7 @@ export interface Account {
   name: string
   type: AccountType
   is_tracking_only: boolean
+  is_emergency_fund: boolean
   is_archived: boolean
   starting_balance: number
   created_at: string
@@ -70,6 +71,8 @@ export const updateAccountSchema = z.discriminatedUnion('action', [
     name: z.string().min(1, 'El nombre es requerido').max(100),
   }),
   z.object({ action: z.literal('archive') }),
+  z.object({ action: z.literal('set_budget_type'), is_tracking_only: z.boolean() }),
+  z.object({ action: z.literal('set_emergency_fund'), is_emergency_fund: z.boolean() }),
 ])
 
 export type CreateAccountInput = z.infer<typeof createAccountSchema>
