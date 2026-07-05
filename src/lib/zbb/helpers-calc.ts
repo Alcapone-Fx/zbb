@@ -43,6 +43,31 @@ export function sinkingFundCalc(
   return needed / remaining
 }
 
+export interface WaterfallFund {
+  id: string
+  target_amount: number
+  target_date: string
+}
+
+/**
+ * Splits a shared saved balance across funds, giving priority to whichever
+ * target_date comes first (the soonest deadline claims savings before later ones).
+ */
+export function waterfallAllocate(
+  funds: WaterfallFund[],
+  available: number
+): Record<string, number> {
+  const sorted = [...funds].sort((a, b) => a.target_date.localeCompare(b.target_date))
+  let remaining = available
+  const allocations: Record<string, number> = {}
+  for (const f of sorted) {
+    const alloc = Math.min(remaining, f.target_amount)
+    allocations[f.id] = alloc
+    remaining -= alloc
+  }
+  return allocations
+}
+
 export interface EmergencyFundTierInfo {
   tier: 0 | 1 | 2 | 3
   coveredMonths: number

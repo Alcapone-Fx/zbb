@@ -6,6 +6,7 @@ import {
   weekendPlannerCalc,
   monthsRemaining,
   sinkingFundCalc,
+  waterfallAllocate,
   emergencyFundTier,
 } from '../helpers-calc'
 
@@ -83,6 +84,44 @@ describe('sinkingFundCalc', () => {
   })
   it('divides full target when balance is zero', () => {
     expect(sinkingFundCalc(500, 0, 5)).toBe(100)
+  })
+})
+
+describe('waterfallAllocate', () => {
+  it('gives the earliest deadline priority, leftover goes to the next', () => {
+    const funds = [
+      { id: 'a', target_amount: 70, target_date: '2026-09-01' },
+      { id: 'b', target_amount: 30, target_date: '2026-08-01' },
+    ]
+    const result = waterfallAllocate(funds, 50)
+    expect(result.b).toBe(30)
+    expect(result.a).toBe(20)
+  })
+
+  it('fully covers all funds when balance exceeds the total', () => {
+    const funds = [
+      { id: 'a', target_amount: 70, target_date: '2026-09-01' },
+      { id: 'b', target_amount: 30, target_date: '2026-08-01' },
+    ]
+    const result = waterfallAllocate(funds, 1000)
+    expect(result.a).toBe(70)
+    expect(result.b).toBe(30)
+  })
+
+  it('allocates nothing when balance is zero', () => {
+    const funds = [{ id: 'a', target_amount: 70, target_date: '2026-09-01' }]
+    const result = waterfallAllocate(funds, 0)
+    expect(result.a).toBe(0)
+  })
+
+  it('sorts by target_date regardless of input order', () => {
+    const funds = [
+      { id: 'later', target_amount: 100, target_date: '2027-01-01' },
+      { id: 'sooner', target_amount: 100, target_date: '2026-08-01' },
+    ]
+    const result = waterfallAllocate(funds, 100)
+    expect(result.sooner).toBe(100)
+    expect(result.later).toBe(0)
   })
 })
 

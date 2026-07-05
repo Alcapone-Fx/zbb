@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { sinkingFundCalc, monthsRemaining } from '@/lib/zbb/helpers-calc'
+import { useState, useEffect, useMemo } from 'react'
+import { sinkingFundCalc, monthsRemaining, waterfallAllocate } from '@/lib/zbb/helpers-calc'
 import type { SinkingFund, SinkingFundGroup } from '@/types/helpers'
 import { AppSelect } from '@/components/ui/AppSelect'
 
@@ -73,6 +73,7 @@ const EMPTY_FUND_FORM: FundFormState = {
 
 interface FundRowProps {
   fund: SinkingFund
+  allocated: number
   isPayOpen: boolean
   payForm: PayFormState
   paySaving: boolean
@@ -88,6 +89,7 @@ interface FundRowProps {
 
 function FundRow({
   fund,
+  allocated,
   isPayOpen,
   payForm,
   paySaving,
@@ -101,7 +103,7 @@ function FundRow({
   onResetCycle,
 }: FundRowProps) {
   const remaining = monthsRemaining(fund.target_date)
-  const contribution = sinkingFundCalc(fund.target_amount, 0, remaining)
+  const contribution = sinkingFundCalc(fund.target_amount, allocated, remaining)
 
   const isPaid = fund.is_paid
   const isOneTime = fund.recurrence === 'one_time'
@@ -254,6 +256,7 @@ export function SinkingFundsHelper() {
   const [funds, setFunds] = useState<SinkingFund[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [accountBalances, setAccountBalances] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)  // true = initial load in progress
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -317,11 +320,18 @@ export function SinkingFundsHelper() {
         setCategories(cats)
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const accs: Account[] = (accountsJson.on_budget ?? []).map((a: any) => ({
-          id: a.id,
-          name: a.name,
-        }))
+        const allAccounts: any[] = [
+          ...(accountsJson.on_budget ?? []),
+          ...(accountsJson.off_budget ?? []),
+        ]
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const accs: Account[] = allAccounts.map((a: any) => ({ id: a.id, name: a.name }))
         setAccounts(accs)
+
+        const balances: Record<string, number> = {}
+        for (const a of allAccounts) balances[a.id] = a.balance
+        setAccountBalances(balances)
+
         setLoading(false)
       })
       .catch(() => {
@@ -609,11 +619,24 @@ export function SinkingFundsHelper() {
 
   // ── Utilities ──────────────────────────────────────────────────────────
 
+  const fundAllocations = useMemo(() => {
+    const result: Record<string, number> = {}
+    for (const group of groups) {
+      if (!group.source_account_id) continue
+      const balance = accountBalances[group.source_account_id] ?? 0
+      const unpaid = funds.filter((f) => f.group_id === group.id && !f.is_paid)
+      Object.assign(result, waterfallAllocate(unpaid, balance))
+    }
+    return result
+  }, [groups, funds, accountBalances])
+
   function groupMonthlyTotal(groupId: string): number {
     return funds
       .filter((f) => f.group_id === groupId && !f.is_paid)
       .reduce(
-        (sum, f) => sum + sinkingFundCalc(f.target_amount, 0, monthsRemaining(f.target_date)),
+        (sum, f) =>
+          sum +
+          sinkingFundCalc(f.target_amount, fundAllocations[f.id] ?? 0, monthsRemaining(f.target_date)),
         0
       )
   }
@@ -996,6 +1019,7 @@ export function SinkingFundsHelper() {
                       <FundRow
                         key={fund.id}
                         fund={fund}
+                        allocated={fundAllocations[fund.id] ?? 0}
                         isPayOpen={payingFundId === fund.id}
                         payForm={payForm}
                         paySaving={paySaving}
@@ -1035,6 +1059,7 @@ export function SinkingFundsHelper() {
                 <FundRow
                   key={fund.id}
                   fund={fund}
+                  allocated={0}
                   isPayOpen={payingFundId === fund.id}
                   payForm={payForm}
                   paySaving={paySaving}
