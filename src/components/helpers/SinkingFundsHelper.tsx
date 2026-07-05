@@ -630,6 +630,20 @@ export function SinkingFundsHelper() {
     return result
   }, [groups, funds, accountBalances])
 
+  function groupSavingsProgress(
+    groupId: string
+  ): { totalTarget: number; saved: number; remaining: number; pct: number } | null {
+    const group = groups.find((g) => g.id === groupId)
+    if (!group?.source_account_id) return null
+    const unpaid = funds.filter((f) => f.group_id === groupId && !f.is_paid)
+    const totalTarget = unpaid.reduce((sum, f) => sum + f.target_amount, 0)
+    if (totalTarget <= 0) return null
+    const saved = accountBalances[group.source_account_id] ?? 0
+    const remaining = Math.max(0, totalTarget - saved)
+    const pct = Math.min(100, (saved / totalTarget) * 100)
+    return { totalTarget, saved, remaining, pct }
+  }
+
   function groupMonthlyTotal(groupId: string): number {
     return funds
       .filter((f) => f.group_id === groupId && !f.is_paid)
@@ -907,6 +921,7 @@ export function SinkingFundsHelper() {
         {groups.map((group) => {
           const groupFunds = funds.filter((f) => f.group_id === group.id)
           const totalMonthly = groupMonthlyTotal(group.id)
+          const progress = groupSavingsProgress(group.id)
           const isCollapsed = collapsedGroups.has(group.id)
           const asState = asignarState[group.id]
 
@@ -962,6 +977,25 @@ export function SinkingFundsHelper() {
                     {group.category_name && group.source_account_name && ' · '}
                     {group.source_account_name && `Cta: ${group.source_account_name}`}
                   </p>
+                )}
+
+                {progress && (
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-sub)' }}>
+                      <span>Objetivo: ${progress.totalTarget.toFixed(2)}</span>
+                      <span>Ahorrado: ${progress.saved.toFixed(2)}</span>
+                      <span>Falta: ${progress.remaining.toFixed(2)}</span>
+                    </div>
+                    <div
+                      className="mt-1 h-2 rounded-full overflow-hidden"
+                      style={{ background: 'rgba(0,0,0,0.2)' }}
+                    >
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${progress.pct}%`, background: 'var(--ac)' }}
+                      />
+                    </div>
+                  </div>
                 )}
 
                 {totalMonthly > 0 && (
