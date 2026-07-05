@@ -1,6 +1,7 @@
 'use client'
 
 import type { IdealVsRealRow } from '@/types/dashboard'
+import { MaskedAmount } from '@/components/shared/MaskedAmount'
 
 interface Props {
   rows: IdealVsRealRow[]
@@ -97,7 +98,7 @@ export function IdealVsRealTable({ rows }: Props) {
                 {row.real_pct.toFixed(1)}%
               </p>
               <p className="text-[10px] tabular-nums" style={{ color: 'var(--text-dim)' }}>
-                {formatAmount(row.real_amount)}
+                <MaskedAmount value={formatAmount(row.real_amount)} />
               </p>
             </div>
 

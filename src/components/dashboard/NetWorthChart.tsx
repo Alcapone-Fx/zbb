@@ -11,6 +11,7 @@ import {
   ReferenceLine,
 } from 'recharts'
 import type { NetWorthPoint } from '@/app/api/dashboard/net-worth-history/route'
+import { MaskedAmount } from '@/components/shared/MaskedAmount'
 
 function formatAmount(n: number): string {
   return new Intl.NumberFormat('es-MX', {
@@ -91,17 +92,17 @@ export function NetWorthChart() {
           <>
             {/* KPI strip */}
             <div className="flex items-baseline justify-between px-4 pt-3 pb-1">
-              <p
-                className="text-lg font-extrabold tabular-nums"
-                style={{ color: latest >= 0 ? 'var(--text-main)' : 'var(--color-negative)' }}
-              >
-                {formatAmount(latest)}
+              <p className="text-lg font-extrabold tabular-nums">
+                <MaskedAmount
+                  value={formatAmount(latest)}
+                  style={{ color: latest >= 0 ? 'var(--text-main)' : 'var(--color-negative)' }}
+                />
               </p>
-              <p
-                className="text-xs font-semibold tabular-nums"
-                style={{ color: delta >= 0 ? 'var(--color-positive)' : 'var(--color-negative)' }}
-              >
-                {delta >= 0 ? '+' : ''}{formatAmount(delta)} últimos 12m
+              <p className="text-xs font-semibold tabular-nums">
+                <MaskedAmount
+                  value={`${delta >= 0 ? '+' : ''}${formatAmount(delta)} últimos 12m`}
+                  style={{ color: delta >= 0 ? 'var(--color-positive)' : 'var(--color-negative)' }}
+                />
               </p>
             </div>
 

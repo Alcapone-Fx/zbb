@@ -1,5 +1,7 @@
 'use client'
 
+import { MaskedAmount } from '@/components/shared/MaskedAmount'
+
 interface Props {
   label: string
   amount: number
@@ -45,8 +47,8 @@ export function KPICard({ label, amount, pct, variant = 'default', alwaysLive }:
           </span>
         )}
       </p>
-      <p className="text-lg font-extrabold tracking-tight" style={{ color: amountColor }}>
-        {formatAmount(amount)}
+      <p className="text-lg font-extrabold tracking-tight">
+        <MaskedAmount value={formatAmount(amount)} style={{ color: amountColor }} />
       </p>
       {pct != null && (
         <p className="text-xs" style={{ color: 'var(--text-dim)' }}>

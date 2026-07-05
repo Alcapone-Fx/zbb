@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { FAB } from "@/components/shared/FAB";
+import { PrivacyToggle } from "@/components/shared/PrivacyToggle";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { PendingTransactionsPanel } from "@/components/shared/PendingTransactionsPanel";
 import { FeedbackProvider } from "@/components/feedback/FeedbackProvider";
@@ -66,6 +67,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* FAB — always visible */}
       <FAB />
+
+      {/* Privacy toggle — hide/show financial amounts */}
+      <PrivacyToggle />
 
       {/* Pending transactions panel */}
       <PendingTransactionsPanel

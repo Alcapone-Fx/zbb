@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { BudgetGroupRow, BudgetCategoryRow } from '@/types/budget'
+import { MaskedAmount } from '@/components/shared/MaskedAmount'
 
 function formatCompact(amount: number): string {
   return new Intl.NumberFormat('es-419', {
@@ -135,7 +136,7 @@ function BudgetRow({ cat, month, onEdit, onTrends, isPast }: BudgetRowProps) {
             opacity: cat.is_system ? 0.5 : 1,
           }}
         >
-          {cat.is_system ? '—' : formatCompact(cat.assigned)}
+          {cat.is_system ? '—' : <MaskedAmount value={formatCompact(cat.assigned)} />}
         </button>
       )}
 
@@ -146,7 +147,7 @@ function BudgetRow({ cat, month, onEdit, onTrends, isPast }: BudgetRowProps) {
           color: cat.activity < 0 ? 'var(--color-negative)' : 'var(--text-dim)',
         }}
       >
-        {cat.activity !== 0 ? formatCompact(cat.activity) : '—'}
+        {cat.activity !== 0 ? <MaskedAmount value={formatCompact(cat.activity)} /> : '—'}
       </p>
 
       {/* Disponible */}
@@ -154,7 +155,7 @@ function BudgetRow({ cat, month, onEdit, onTrends, isPast }: BudgetRowProps) {
         className="text-right text-xs font-bold tabular-nums"
         style={{ color: disponibleColor }}
       >
-        {formatCompact(cat.disponible)}
+        <MaskedAmount value={formatCompact(cat.disponible)} />
       </p>
     </div>
   )
@@ -197,13 +198,13 @@ function BudgetGroup({ group, month, onEdit, onTrends, isPast }: BudgetGroupProp
           </span>
         </span>
         <span className="text-right text-[11px] font-bold tabular-nums" style={{ color: 'var(--text-main)' }}>
-          {formatExact(totalAssigned)}
+          <MaskedAmount value={formatExact(totalAssigned)} />
         </span>
         <span
           className="text-right text-[11px] tabular-nums"
           style={{ color: totalActivity < 0 ? 'var(--color-negative)' : 'var(--text-dim)' }}
         >
-          {totalActivity !== 0 ? formatExact(totalActivity) : '—'}
+          {totalActivity !== 0 ? <MaskedAmount value={formatExact(totalActivity)} /> : '—'}
         </span>
         <span
           className="text-right text-[11px] font-bold tabular-nums"
@@ -216,7 +217,7 @@ function BudgetGroup({ group, month, onEdit, onTrends, isPast }: BudgetGroupProp
                   : 'var(--text-dim)',
           }}
         >
-          {formatExact(totalDisponible)}
+          <MaskedAmount value={formatExact(totalDisponible)} />
         </span>
       </button>
 

@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { GroupBreakdownRow } from '@/types/dashboard'
+import { MaskedAmount } from '@/components/shared/MaskedAmount'
 
 const COLORS = ['#4F6EF7', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4']
 
@@ -82,7 +83,7 @@ export function SpendingDonut({ rows, totalExpense }: Props) {
                   Gasto total
                 </p>
                 <p className="text-base font-extrabold tabular-nums" style={{ color: 'var(--text-main)' }}>
-                  {formatAmount(totalExpense)}
+                  <MaskedAmount value={formatAmount(totalExpense)} />
                 </p>
               </div>
             </div>
