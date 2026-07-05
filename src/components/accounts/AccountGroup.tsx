@@ -5,7 +5,7 @@ import { AccountCard } from "./AccountCard";
 
 interface Props {
   title: string;
-  totalLabel: string;
+  totalLabel: React.ReactNode;
   accounts: AccountWithBalance[];
   isOffBudget?: boolean;
   onEdit: (account: AccountWithBalance) => void;

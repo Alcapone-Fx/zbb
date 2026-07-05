@@ -9,6 +9,7 @@ import { TransactionRow, formatCurrency } from "./TransactionRow";
 import { EditTransactionSheet } from "./EditTransactionSheet";
 import { ScheduledTransactionsTab } from "./ScheduledTransactionsTab";
 import { AppSelect } from "@/components/ui/AppSelect";
+import { MaskedAmount } from "@/components/shared/MaskedAmount";
 
 interface TransactionGroup {
   category_id: string | null;
@@ -298,11 +299,8 @@ export function TransactionsClient() {
               >
                 Ingresos
               </p>
-              <p
-                className="text-lg font-extrabold tabular-nums"
-                style={{ color: "var(--color-positive)" }}
-              >
-                {formatCurrency(totals.income)}
+              <p className="text-lg font-extrabold tabular-nums">
+                <MaskedAmount value={formatCurrency(totals.income)} style={{ color: "var(--color-positive)" }} />
               </p>
             </div>
             <div>
@@ -312,11 +310,8 @@ export function TransactionsClient() {
               >
                 Gastos
               </p>
-              <p
-                className="text-lg font-extrabold tabular-nums"
-                style={{ color: "var(--color-negative)" }}
-              >
-                {formatCurrency(totals.expenses)}
+              <p className="text-lg font-extrabold tabular-nums">
+                <MaskedAmount value={formatCurrency(totals.expenses)} style={{ color: "var(--color-negative)" }} />
               </p>
             </div>
             <div>
@@ -326,16 +321,16 @@ export function TransactionsClient() {
               >
                 Balance
               </p>
-              <p
-                className="text-lg font-extrabold tabular-nums"
-                style={{
-                  color:
-                    totals.balance >= 0
-                      ? "var(--color-positive)"
-                      : "var(--color-negative)",
-                }}
-              >
-                {formatCurrency(totals.balance)}
+              <p className="text-lg font-extrabold tabular-nums">
+                <MaskedAmount
+                  value={formatCurrency(totals.balance)}
+                  style={{
+                    color:
+                      totals.balance >= 0
+                        ? "var(--color-positive)"
+                        : "var(--color-negative)",
+                  }}
+                />
               </p>
             </div>
           </div>
@@ -522,15 +517,15 @@ export function TransactionsClient() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span
-                    className="text-sm font-bold tabular-nums"
-                    style={{
-                      color: isNegative
-                        ? "var(--color-negative)"
-                        : "var(--color-positive)",
-                    }}
-                  >
-                    {formatCurrency(group.subtotal)}
+                  <span className="text-sm font-bold tabular-nums">
+                    <MaskedAmount
+                      value={formatCurrency(group.subtotal)}
+                      style={{
+                        color: isNegative
+                          ? "var(--color-negative)"
+                          : "var(--color-positive)",
+                      }}
+                    />
                   </span>
                   {collapsed ? (
                     <ChevronDown size={14} style={{ color: "var(--text-dim)" }} />

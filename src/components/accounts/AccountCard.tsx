@@ -10,6 +10,7 @@ import {
   Pencil,
 } from "lucide-react";
 import type { AccountWithBalance, AccountType } from "@/types/account";
+import { MaskedAmount } from "@/components/shared/MaskedAmount";
 
 const TYPE_ICONS: Record<AccountType, React.FC<{ size: number; strokeWidth: number; color?: string }>> = {
   checking:    (p) => <Building2 {...p} />,
@@ -96,11 +97,11 @@ export function AccountCard({ account, isOffBudget, onEdit }: Props) {
         </p>
       </div>
 
-      <span
-        className="text-sm font-bold tabular-nums shrink-0"
-        style={{ color: isNegative ? "var(--color-negative)" : "var(--color-positive)" }}
-      >
-        {formatCurrency(displayBalance)}
+      <span className="text-sm font-bold tabular-nums shrink-0">
+        <MaskedAmount
+          value={formatCurrency(displayBalance)}
+          style={{ color: isNegative ? "var(--color-negative)" : "var(--color-positive)" }}
+        />
       </span>
 
       <button

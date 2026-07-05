@@ -3,6 +3,7 @@
 import { CheckCircle2, ArrowLeftRight, Pencil, Trash2 } from "lucide-react";
 import type { TransactionWithDetails } from "@/types/transaction";
 import { TRANSACTION_TYPE_LABELS } from "@/types/transaction";
+import { MaskedAmount } from "@/components/shared/MaskedAmount";
 
 interface Props {
   tx: TransactionWithDetails;
@@ -85,7 +86,7 @@ export function TransactionRow({ tx, onEdit, onDelete }: Props) {
           }}
         >
           {isPositive ? "+" : ""}
-          {formatCurrency(tx.amount)}
+          <MaskedAmount value={formatCurrency(tx.amount)} />
         </p>
         {tx.next_month && (
           <p className="text-[10px] font-semibold" style={{ color: "var(--ac)" }}>

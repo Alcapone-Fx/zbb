@@ -8,6 +8,7 @@ import { AccountGroup } from "@/components/accounts/AccountGroup";
 import { CreateAccountModal } from "@/components/accounts/CreateAccountModal";
 import { EditAccountModal } from "@/components/accounts/EditAccountModal";
 import { ReconciliationSheet } from "@/components/accounts/ReconciliationSheet";
+import { MaskedAmount } from "@/components/shared/MaskedAmount";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-419", {
@@ -138,10 +139,12 @@ export default function AccountsPage() {
               letterSpacing: "-2px",
               lineHeight: 1.1,
               marginTop: "2px",
-              color: netWorthNegative ? "var(--color-negative)" : "var(--text-main)",
             }}
           >
-            {formatCurrency(netWorth)}
+            <MaskedAmount
+              value={formatCurrency(netWorth)}
+              style={{ color: netWorthNegative ? "var(--color-negative)" : "var(--text-main)" }}
+            />
           </p>
         </div>
 
@@ -156,7 +159,7 @@ export default function AccountsPage() {
                 On-Budget
               </p>
               <p className="tabular-nums" style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-main)", marginTop: "2px" }}>
-                {formatCurrency(stats.onBudgetTotal)}
+                <MaskedAmount value={formatCurrency(stats.onBudgetTotal)} />
               </p>
             </div>
             <div
@@ -167,7 +170,7 @@ export default function AccountsPage() {
                 Activos
               </p>
               <p className="tabular-nums" style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-positive)", marginTop: "2px" }}>
-                {formatCurrency(stats.activos)}
+                <MaskedAmount value={formatCurrency(stats.activos)} />
               </p>
             </div>
             <div
@@ -177,8 +180,11 @@ export default function AccountsPage() {
               <p style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-dim)", letterSpacing: "0.4px", textTransform: "uppercase" }}>
                 Deudas
               </p>
-              <p className="tabular-nums" style={{ fontSize: "13px", fontWeight: 700, color: stats.deudas < 0 ? "var(--color-negative)" : "var(--text-dim)", marginTop: "2px" }}>
-                {formatCurrency(stats.deudas)}
+              <p className="tabular-nums" style={{ fontSize: "13px", fontWeight: 700, marginTop: "2px" }}>
+                <MaskedAmount
+                  value={formatCurrency(stats.deudas)}
+                  style={{ color: stats.deudas < 0 ? "var(--color-negative)" : "var(--text-dim)" }}
+                />
               </p>
             </div>
           </div>
@@ -199,20 +205,28 @@ export default function AccountsPage() {
       <div className="pt-4 pb-4">
         <AccountGroup
           title="On-Budget"
-          totalLabel={formatCurrency(
-            (data?.on_budget ?? []).reduce((s, a) =>
-              a.type === "liability" ? s - a.balance : s + a.balance, 0)
-          )}
+          totalLabel={
+            <MaskedAmount
+              value={formatCurrency(
+                (data?.on_budget ?? []).reduce((s, a) =>
+                  a.type === "liability" ? s - a.balance : s + a.balance, 0)
+              )}
+            />
+          }
           accounts={data?.on_budget ?? []}
           onEdit={setEditTarget}
         />
 
         <AccountGroup
           title="Off-Budget / Patrimonio"
-          totalLabel={formatCurrency(
-            (data?.off_budget ?? []).reduce((s, a) =>
-              a.type === "liability" ? s - a.balance : s + a.balance, 0)
-          )}
+          totalLabel={
+            <MaskedAmount
+              value={formatCurrency(
+                (data?.off_budget ?? []).reduce((s, a) =>
+                  a.type === "liability" ? s - a.balance : s + a.balance, 0)
+              )}
+            />
+          }
           accounts={data?.off_budget ?? []}
           isOffBudget
           onEdit={setEditTarget}

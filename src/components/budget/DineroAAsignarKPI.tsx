@@ -1,5 +1,7 @@
 'use client'
 
+import { MaskedAmount } from '@/components/shared/MaskedAmount'
+
 interface Props {
   amount: number
 }
@@ -30,11 +32,8 @@ export function DineroAAsignarKPI({ amount }: Props) {
       >
         Dinero a Asignar
       </p>
-      <p
-        className="text-2xl font-extrabold tabular-nums tracking-tight"
-        style={{ color }}
-      >
-        {formatCurrency(amount)}
+      <p className="text-2xl font-extrabold tabular-nums tracking-tight">
+        <MaskedAmount value={formatCurrency(amount)} style={{ color }} />
       </p>
       {amount < 0 && (
         <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-negative)' }}>

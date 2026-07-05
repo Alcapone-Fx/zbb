@@ -7,6 +7,7 @@ import { FREQUENCY_LABELS } from "@/types/scheduled-transaction";
 import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
 import { EditScheduledSheet } from "./EditScheduledSheet";
+import { MaskedAmount } from "@/components/shared/MaskedAmount";
 
 function formatCurrency(v: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -206,11 +207,8 @@ export function ScheduledTransactionsTab({ initialAccounts, initialGroups }: Pro
                     {item.account_name} · {FREQUENCY_LABELS[item.frequency]} · Próx. {formatDate(item.next_due_date)}
                   </p>
                 </div>
-                <p
-                  className="text-[17px] font-extrabold tabular-nums ml-3 shrink-0"
-                  style={{ color: amountColor }}
-                >
-                  {formatCurrency(item.amount)}
+                <p className="text-[17px] font-extrabold tabular-nums ml-3 shrink-0">
+                  <MaskedAmount value={formatCurrency(item.amount)} style={{ color: amountColor }} />
                 </p>
               </div>
 
