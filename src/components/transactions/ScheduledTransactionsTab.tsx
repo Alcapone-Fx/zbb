@@ -8,6 +8,8 @@ import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
 import { EditScheduledSheet } from "./EditScheduledSheet";
 import { MaskedAmount } from "@/components/shared/MaskedAmount";
+import { ConfirmSheet } from "@/components/shared/ConfirmSheet";
+import { todayLocalDateString } from "@/lib/zbb/date";
 
 function formatCurrency(v: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -37,6 +39,13 @@ export function ScheduledTransactionsTab({ initialAccounts, initialGroups }: Pro
   const [error, setError] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<ScheduledTransaction | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    onConfirm: () => Promise<void>;
+    destructive?: boolean;
+  } | null>(null);
 
   // Reload: setLoading(true) first to show skeleton, then re-fetch
   function refetch() {
@@ -97,8 +106,17 @@ export function ScheduledTransactionsTab({ initialAccounts, initialGroups }: Pro
     }
   }
 
-  async function handleDelete(item: ScheduledTransaction) {
-    if (!window.confirm(`¿Eliminar "${item.payee ?? "esta transacción programada"}"?`)) return;
+  function handleDelete(item: ScheduledTransaction) {
+    setConfirm({
+      title: "Eliminar transacción programada",
+      description: `¿Eliminar "${item.payee ?? "esta transacción programada"}"?`,
+      confirmLabel: "Eliminar",
+      destructive: true,
+      onConfirm: () => performDelete(item),
+    });
+  }
+
+  async function performDelete(item: ScheduledTransaction) {
     setActionLoading(item.id + "-delete");
     try {
       const res = await fetch(`/api/scheduled-transactions/${item.id}`, {
@@ -159,7 +177,7 @@ export function ScheduledTransactionsTab({ initialAccounts, initialGroups }: Pro
         {items.map((item) => {
           const isExpense = item.amount < 0;
           const amountColor = isExpense ? "var(--color-negative)" : "var(--color-positive)";
-          const today = new Date().toISOString().split("T")[0];
+          const today = todayLocalDateString();
           const isDue = item.next_due_date <= today && item.is_active;
 
           return (
@@ -265,6 +283,18 @@ export function ScheduledTransactionsTab({ initialAccounts, initialGroups }: Pro
             setEditTarget(null);
             refetch();
           }}
+        />
+      )}
+
+      {confirm && (
+        <ConfirmSheet
+          open={true}
+          onClose={() => setConfirm(null)}
+          title={confirm.title}
+          description={confirm.description}
+          confirmLabel={confirm.confirmLabel}
+          onConfirm={confirm.onConfirm}
+          destructive={confirm.destructive}
         />
       )}
     </>

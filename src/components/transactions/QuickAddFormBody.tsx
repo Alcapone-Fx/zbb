@@ -8,6 +8,7 @@ import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
 import type { CreateTransactionInput } from "@/types/transaction";
 import { AppSelect } from "@/components/ui/AppSelect";
+import { todayLocalDateString } from "@/lib/zbb/date";
 
 interface Props {
   onClose: () => void;
@@ -30,7 +31,7 @@ export function QuickAddFormBody({ onClose }: Props) {
   const [loadingData, setLoadingData] = useState(true);
 
   const [type, setType] = useState<TxType>("expense");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(todayLocalDateString());
   const [accountId, setAccountId] = useState("");
   const [transferToAccountId, setTransferToAccountId] = useState("");
   const [amount, setAmount] = useState("");
@@ -45,7 +46,7 @@ export function QuickAddFormBody({ onClose }: Props) {
   const [nextMonth, setNextMonth] = useState(false);
   const [makeRecurring, setMakeRecurring] = useState(false);
   const [recurFrequency, setRecurFrequency] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
-  const [recurStartDate, setRecurStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [recurStartDate, setRecurStartDate] = useState(todayLocalDateString());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);

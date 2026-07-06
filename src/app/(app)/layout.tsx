@@ -10,6 +10,7 @@ import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { PendingTransactionsPanel } from "@/components/shared/PendingTransactionsPanel";
 import { FeedbackProvider } from "@/components/feedback/FeedbackProvider";
 import type { ScheduledTransaction } from "@/types/scheduled-transaction";
+import { todayLocalDateString } from "@/lib/zbb/date";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Check for due scheduled transactions on mount
   useEffect(() => {
-    fetch("/api/scheduled-transactions/pending")
+    fetch(`/api/scheduled-transactions/pending?today=${todayLocalDateString()}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (!json) return;

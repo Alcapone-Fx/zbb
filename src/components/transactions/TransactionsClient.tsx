@@ -10,6 +10,8 @@ import { EditTransactionSheet } from "./EditTransactionSheet";
 import { ScheduledTransactionsTab } from "./ScheduledTransactionsTab";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { MaskedAmount } from "@/components/shared/MaskedAmount";
+import { ConfirmSheet } from "@/components/shared/ConfirmSheet";
+import { todayLocalDateString } from "@/lib/zbb/date";
 
 interface TransactionGroup {
   category_id: string | null;
@@ -61,7 +63,7 @@ export function TransactionsClient() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
   });
-  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
+  const [dateTo, setDateTo] = useState(() => todayLocalDateString());
 
   const [filterType, setFilterType] = useState<string>("");
   const [filterAccount, setFilterAccount] = useState<string>("");
@@ -78,11 +80,19 @@ export function TransactionsClient() {
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
+  const [confirm, setConfirm] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    onConfirm: () => Promise<void>;
+    destructive?: boolean;
+  } | null>(null);
+
   // Initial data load — fetch transactions, accounts and category groups in parallel
   useEffect(() => {
     const now = new Date();
     const initFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-    const initTo = now.toISOString().split("T")[0];
+    const initTo = todayLocalDateString();
 
     async function load() {
       try {
@@ -173,16 +183,19 @@ export function TransactionsClient() {
     });
   }
 
-  async function handleDelete(tx: TransactionWithDetails) {
-    if (
-      !window.confirm(
-        tx.transfer_pair_id
-          ? "¿Eliminar esta transferencia? Se eliminarán ambas partes."
-          : "¿Eliminar esta transacción?"
-      )
-    )
-      return;
+  function handleDelete(tx: TransactionWithDetails) {
+    setConfirm({
+      title: "Eliminar transacción",
+      description: tx.transfer_pair_id
+        ? "¿Eliminar esta transferencia? Se eliminarán ambas partes."
+        : "¿Eliminar esta transacción?",
+      confirmLabel: "Eliminar",
+      destructive: true,
+      onConfirm: () => performDelete(tx),
+    });
+  }
 
+  async function performDelete(tx: TransactionWithDetails) {
     setDeleteError(null);
     setDeletingId(tx.id);
     try {
@@ -574,6 +587,18 @@ export function TransactionsClient() {
         />
       )}
       </>
+      )}
+
+      {confirm && (
+        <ConfirmSheet
+          open={true}
+          onClose={() => setConfirm(null)}
+          title={confirm.title}
+          description={confirm.description}
+          confirmLabel={confirm.confirmLabel}
+          onConfirm={confirm.onConfirm}
+          destructive={confirm.destructive}
+        />
       )}
     </>
   );

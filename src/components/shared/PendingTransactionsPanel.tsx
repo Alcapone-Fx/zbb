@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Check, SkipForward, Edit2, Repeat } from "lucide-react";
 import type { ScheduledTransaction } from "@/types/scheduled-transaction";
 import { FREQUENCY_LABELS } from "@/types/scheduled-transaction";
+import { todayLocalDateString } from "@/lib/zbb/date";
 
 interface Props {
   isOpen: boolean;
@@ -50,7 +51,7 @@ function PendingItemCard({ item, onDone }: ItemCardProps) {
     setError(null);
     setLoading("confirm");
     try {
-      const body: Record<string, unknown> = {};
+      const body: Record<string, unknown> = { today: todayLocalDateString() };
       if (mode === "editing") {
         const parsed = parseFloat(editAmount);
         if (isNaN(parsed) || parsed <= 0) {

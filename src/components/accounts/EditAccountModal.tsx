@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, Archive, CheckCircle2 } from "lucide-react";
 import type { AccountWithBalance } from "@/types/account";
+import { ConfirmSheet } from "@/components/shared/ConfirmSheet";
 
 interface Props {
   account: AccountWithBalance | null;
@@ -18,6 +19,7 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
   const [error, setError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState(false);
 
   const [isTrackingOnly, setIsTrackingOnly] = useState(false);
   const [isEmergencyFund, setIsEmergencyFund] = useState(false);
@@ -363,7 +365,7 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
                 )}
                 <button
                   type="button"
-                  onClick={handleArchive}
+                  onClick={() => setConfirmArchive(true)}
                   disabled={archiving}
                   className="flex items-center gap-3 w-full px-4 py-3 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
                   style={{
@@ -379,6 +381,16 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
           </div>
         )}
       </div>
+
+      <ConfirmSheet
+        open={confirmArchive}
+        onClose={() => setConfirmArchive(false)}
+        title="Archivar cuenta"
+        description={`¿Archivar "${account.name}"? Dejará de aparecer en las listas activas, pero su historial se conserva.`}
+        confirmLabel="Archivar"
+        destructive
+        onConfirm={handleArchive}
+      />
     </div>
   );
 }

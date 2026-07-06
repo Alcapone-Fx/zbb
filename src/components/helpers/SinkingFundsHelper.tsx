@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { sinkingFundCalc, monthsRemaining, waterfallAllocate, simulateGroupYear } from '@/lib/zbb/helpers-calc'
+import { todayLocalDateString } from '@/lib/zbb/date'
 import type { SinkingFund, SinkingFundGroup } from '@/types/helpers'
 import { AppSelect } from '@/components/ui/AppSelect'
 
@@ -10,10 +11,6 @@ import { AppSelect } from '@/components/ui/AppSelect'
 function currentMonthStr(): string {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-}
-
-function todayStr(): string {
-  return new Date().toISOString().split('T')[0]
 }
 
 /** Formats a YYYY-MM-DD date as "Ene-26" style */
@@ -279,7 +276,7 @@ export function SinkingFundsHelper() {
 
   // Pay form
   const [payingFundId, setPayingFundId] = useState<string | null>(null)
-  const [payForm, setPayForm] = useState<PayFormState>({ amount: '', date: todayStr() })
+  const [payForm, setPayForm] = useState<PayFormState>({ amount: '', date: todayLocalDateString() })
   const [paySaving, setPaySaving] = useState(false)
   const [payFormError, setPayFormError] = useState<string | null>(null)
 
@@ -532,13 +529,13 @@ export function SinkingFundsHelper() {
 
   function openPay(fund: SinkingFund) {
     setPayingFundId(fund.id)
-    setPayForm({ amount: String(fund.target_amount), date: todayStr() })
+    setPayForm({ amount: String(fund.target_amount), date: todayLocalDateString() })
     setPayFormError(null)
   }
 
   function closePay() {
     setPayingFundId(null)
-    setPayForm({ amount: '', date: todayStr() })
+    setPayForm({ amount: '', date: todayLocalDateString() })
     setPayFormError(null)
   }
 

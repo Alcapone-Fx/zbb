@@ -5,6 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
 import { AppSelect } from "@/components/ui/AppSelect";
+import { todayLocalDateString } from "@/lib/zbb/date";
 
 interface Props {
   account: AccountWithBalance | null;
@@ -22,7 +23,7 @@ function formatCurrency(amount: number): string {
 }
 
 export function ReconciliationSheet({ account, onClose, onDone }: Props) {
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayLocalDateString();
 
   const [date, setDate] = useState(today);
   const [bankBalanceInput, setBankBalanceInput] = useState("");

@@ -2,14 +2,19 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { ScheduledTransaction } from '@/types/scheduled-transaction'
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const today = new Date().toISOString().split('T')[0]
+  // Prefer the client's local date — the server can't know the user's timezone.
+  const clientToday = new URL(req.url).searchParams.get('today')
+  const today =
+    clientToday && /^\d{4}-\d{2}-\d{2}$/.test(clientToday)
+      ? clientToday
+      : new Date().toISOString().split('T')[0]
 
   const { data, error } = await supabase
     .from('scheduled_transactions')

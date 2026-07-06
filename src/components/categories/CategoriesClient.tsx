@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { CategoryGroupList } from './CategoryGroupList'
 import { GroupFormSheet } from './GroupFormSheet'
 import { CategoryFormSheet } from './CategoryFormSheet'
-import { ConfirmSheet } from './ConfirmSheet'
+import { ConfirmSheet } from '@/components/shared/ConfirmSheet'
 import type {
   Category,
   CategoryGroup,

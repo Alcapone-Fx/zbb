@@ -29,7 +29,7 @@ export async function POST(
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   }
 
-  const { amount: overrideAmount, date: overrideDate } = parsed.data
+  const { amount: overrideAmount, date: overrideDate, today: clientToday } = parsed.data
 
   // Fetch scheduled transaction
   const { data: scheduled } = await supabase
@@ -47,7 +47,8 @@ export async function POST(
     return NextResponse.json({ error: 'La transacción programada no está activa' }, { status: 400 })
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  // Prefer the client's local date — the server can't know the user's timezone.
+  const today = clientToday ?? new Date().toISOString().split('T')[0]
   const txDate = overrideDate ?? today
 
   // Determine signed amount (use override if provided, keeping original sign/type)

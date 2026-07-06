@@ -78,7 +78,7 @@ export async function POST(req: Request) {
     )
   }
 
-  const { name, type, is_tracking_only, starting_balance } = parsed.data
+  const { name, type, is_tracking_only, starting_balance, today: clientToday } = parsed.data
 
   const { data: account, error: accErr } = await supabase
     .from('accounts')
@@ -97,7 +97,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  // Prefer the client's local date — the server can't know the user's timezone.
+  const today = clientToday ?? new Date().toISOString().split('T')[0]
   const { error: txErr } = await supabase.from('transactions').insert({
     user_id: user.id,
     account_id: account.id,

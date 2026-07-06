@@ -63,6 +63,7 @@ export const createAccountSchema = z.object({
   ]),
   is_tracking_only: z.boolean().default(false),
   starting_balance: z.number().default(0),
+  today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 
 export const updateAccountSchema = z.discriminatedUnion('action', [

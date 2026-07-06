@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Save, Play } from 'lucide-react'
 import type { BudgetGroupRow } from '@/types/budget'
+import { ConfirmSheet } from '@/components/shared/ConfirmSheet'
 
 interface Props {
   month: string
@@ -15,6 +16,7 @@ export function TemplateActions({ month, groups, onApplied }: Props) {
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
+  const [confirmApply, setConfirmApply] = useState(false)
 
   async function handleSave() {
     const template: Record<string, number> = {}
@@ -49,8 +51,6 @@ export function TemplateActions({ month, groups, onApplied }: Props) {
   }
 
   async function handleApply() {
-    if (!window.confirm('¿Aplicar la plantilla guardada a este mes? Se sobreescribirán las asignaciones actuales.')) return
-
     setApplying(true)
     setError(null)
     try {
@@ -87,7 +87,7 @@ export function TemplateActions({ month, groups, onApplied }: Props) {
 
       <button
         type="button"
-        onClick={handleApply}
+        onClick={() => setConfirmApply(true)}
         disabled={applying}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-opacity disabled:opacity-50"
         style={{ background: 'var(--bg-elevated)', color: 'var(--text-sub)' }}
@@ -101,6 +101,15 @@ export function TemplateActions({ month, groups, onApplied }: Props) {
           {error}
         </p>
       )}
+
+      <ConfirmSheet
+        open={confirmApply}
+        onClose={() => setConfirmApply(false)}
+        title="Aplicar plantilla"
+        description="¿Aplicar la plantilla guardada a este mes? Se sobreescribirán las asignaciones actuales."
+        confirmLabel="Aplicar"
+        onConfirm={handleApply}
+      />
     </div>
   )
 }

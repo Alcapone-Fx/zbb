@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Building2, PiggyBank, CreditCard, Banknote, TrendingUp, Landmark } from "lucide-react";
 import type { AccountType, CreateAccountInput } from "@/types/account";
 import { ACCOUNT_TYPE_LABELS, TRACKING_ONLY_DEFAULTS } from "@/types/account";
+import { todayLocalDateString } from "@/lib/zbb/date";
 
 const TYPE_ICONS: Record<AccountType, React.FC<{ size: number }>> = {
   checking: (p) => <Building2 {...p} />,
@@ -69,6 +70,7 @@ export function CreateAccountModal({ open, onClose, onCreated, defaultTrackingOn
       type,
       is_tracking_only: isTrackingOnly,
       starting_balance: amount,
+      today: todayLocalDateString(),
     };
 
     try {

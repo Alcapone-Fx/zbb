@@ -47,6 +47,7 @@ export const updateScheduledTransactionSchema = z.object({
 export const confirmScheduledTransactionSchema = z.object({
   amount: z.number().positive().multipleOf(0.01).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 
 export type CreateScheduledTransactionInput = z.infer<typeof createScheduledTransactionSchema>
