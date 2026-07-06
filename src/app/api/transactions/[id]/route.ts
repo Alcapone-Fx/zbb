@@ -42,9 +42,12 @@ export async function PATCH(
   }
 
   const updates: Record<string, unknown> = {}
-  const { date, amount, category_id, payee, memo, tags, next_month } = parsed.data
+  const { date, account_id, amount, category_id, payee, memo, tags, next_month } = parsed.data
 
   if (date !== undefined) updates.date = date
+  // Transfers have a paired leg on another account — moving just one side
+  // would desync the pair, so account changes are only applied to non-transfers.
+  if (account_id !== undefined && existing.type !== 'transfer') updates.account_id = account_id
   if (category_id !== undefined) updates.category_id = category_id
   if (payee !== undefined) updates.payee = payee
   if (memo !== undefined) updates.memo = memo

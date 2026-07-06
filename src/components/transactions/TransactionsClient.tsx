@@ -565,6 +565,7 @@ export function TransactionsClient() {
         <EditTransactionSheet
           tx={editTarget}
           groups={categoryGroups}
+          accounts={accounts}
           onClose={() => setEditTarget(null)}
           onSaved={() => {
             setEditTarget(null);

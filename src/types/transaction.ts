@@ -64,6 +64,7 @@ export const createTransactionSchema = z.object({
 
 export const updateTransactionSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida').optional(),
+  account_id: z.string().uuid('Cuenta inválida').optional(),
   amount: z
     .number()
     .positive('El monto debe ser mayor que cero')

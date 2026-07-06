@@ -4,17 +4,20 @@ import { useState } from "react";
 import { X, AlertTriangle } from "lucide-react";
 import type { TransactionWithDetails, UpdateTransactionInput } from "@/types/transaction";
 import type { CategoryGroupWithCategories } from "@/types/category";
+import type { AccountWithBalance } from "@/types/account";
 import { AppSelect } from "@/components/ui/AppSelect";
 
 interface Props {
   tx: TransactionWithDetails | null;
   groups: CategoryGroupWithCategories[];
+  accounts: AccountWithBalance[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function EditTransactionSheet({ tx, groups, onClose, onSaved }: Props) {
+export function EditTransactionSheet({ tx, groups, accounts, onClose, onSaved }: Props) {
   const [date, setDate] = useState(tx?.date ?? "");
+  const [accountId, setAccountId] = useState(tx?.account_id ?? "");
   const [amount, setAmount] = useState(tx ? String(Math.abs(tx.amount)) : "");
   const [categoryId, setCategoryId] = useState(tx?.category_id ?? "");
   const [payee, setPayee] = useState(tx?.payee ?? "");
@@ -56,6 +59,7 @@ export function EditTransactionSheet({ tx, groups, onClose, onSaved }: Props) {
       memo: memo.trim() || null,
       tags,
       next_month: isIncome ? nextMonth : false,
+      ...(isTransfer ? {} : { account_id: accountId }),
     };
 
     try {
@@ -128,27 +132,66 @@ export function EditTransactionSheet({ tx, groups, onClose, onSaved }: Props) {
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Date */}
-          <div className="flex flex-col gap-1.5">
-            <label
-              className="text-xs font-bold uppercase tracking-widest"
-              style={{ color: "var(--text-dim)" }}
-            >
-              Fecha
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-              className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
-              style={{
-                background: "var(--bg-elevated)",
-                color: "var(--text-main)",
-                border: "1px solid var(--border-card)",
-              }}
-            />
-          </div>
+          {/* Date + Account */}
+          {isTransfer ? (
+            <div className="flex flex-col gap-1.5">
+              <label
+                className="text-xs font-bold uppercase tracking-widest"
+                style={{ color: "var(--text-dim)" }}
+              >
+                Fecha
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
+                style={{
+                  background: "var(--bg-elevated)",
+                  color: "var(--text-main)",
+                  border: "1px solid var(--border-card)",
+                }}
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label
+                  className="text-xs font-bold uppercase tracking-widest"
+                  style={{ color: "var(--text-dim)" }}
+                >
+                  Fecha
+                </label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                  className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    color: "var(--text-main)",
+                    border: "1px solid var(--border-card)",
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label
+                  className="text-xs font-bold uppercase tracking-widest"
+                  style={{ color: "var(--text-dim)" }}
+                >
+                  Cuenta
+                </label>
+                <AppSelect
+                  value={accountId}
+                  onChange={setAccountId}
+                  placeholder="Seleccionar cuenta"
+                  options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Amount */}
           {!isTransfer && (
