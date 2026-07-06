@@ -55,6 +55,7 @@ interface FundFormState {
 interface PayFormState {
   amount: string
   date: string
+  recordTransaction: boolean
 }
 
 const EMPTY_GROUP_FORM: GroupFormState = { name: '', category_id: '', source_account_id: '' }
@@ -224,6 +225,15 @@ function FundRow({
               />
             </div>
           </div>
+          <label className="flex items-start gap-2 text-xs" style={{ color: 'var(--text-sub)' }}>
+            <input
+              type="checkbox"
+              checked={!payForm.recordTransaction}
+              onChange={(e) => onPayFormChange({ ...payForm, recordTransaction: !e.target.checked })}
+              className="mt-0.5"
+            />
+            Ya registré este gasto por mi cuenta (no crear transacción)
+          </label>
           {payFormError && <p className="text-xs text-red-500">{payFormError}</p>}
           <div className="flex gap-2">
             <button
@@ -276,7 +286,7 @@ export function SinkingFundsHelper() {
 
   // Pay form
   const [payingFundId, setPayingFundId] = useState<string | null>(null)
-  const [payForm, setPayForm] = useState<PayFormState>({ amount: '', date: todayLocalDateString() })
+  const [payForm, setPayForm] = useState<PayFormState>({ amount: '', date: todayLocalDateString(), recordTransaction: true })
   const [paySaving, setPaySaving] = useState(false)
   const [payFormError, setPayFormError] = useState<string | null>(null)
 
@@ -529,13 +539,13 @@ export function SinkingFundsHelper() {
 
   function openPay(fund: SinkingFund) {
     setPayingFundId(fund.id)
-    setPayForm({ amount: String(fund.target_amount), date: todayLocalDateString() })
+    setPayForm({ amount: String(fund.target_amount), date: todayLocalDateString(), recordTransaction: true })
     setPayFormError(null)
   }
 
   function closePay() {
     setPayingFundId(null)
-    setPayForm({ amount: '', date: todayLocalDateString() })
+    setPayForm({ amount: '', date: todayLocalDateString(), recordTransaction: true })
     setPayFormError(null)
   }
 
@@ -552,7 +562,7 @@ export function SinkingFundsHelper() {
       const res = await fetch(`/api/helpers/sinking-funds/${fundId}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, date: payForm.date }),
+        body: JSON.stringify({ amount, date: payForm.date, record_transaction: payForm.recordTransaction }),
       })
       const json = await res.json()
       if (!res.ok) {

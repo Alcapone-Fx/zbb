@@ -1,9 +1,20 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { BudgetGroupRow, BudgetCategoryRow } from '@/types/budget'
 import { MaskedAmount } from '@/components/shared/MaskedAmount'
+
+/** Returns the first and last day (YYYY-MM-DD) of a "YYYY-MM" month string. */
+function monthDateRange(month: string): { from: string; to: string } {
+  const [y, m] = month.split('-').map(Number)
+  const lastDay = new Date(y, m, 0).getDate()
+  return {
+    from: `${month}-01`,
+    to: `${month}-${String(lastDay).padStart(2, '0')}`,
+  }
+}
 
 function formatCompact(amount: number): string {
   return new Intl.NumberFormat('es-419', {
@@ -141,14 +152,19 @@ function BudgetRow({ cat, month, onEdit, onTrends, isPast }: BudgetRowProps) {
       )}
 
       {/* Actividad */}
-      <p
-        className="text-right text-xs tabular-nums"
-        style={{
-          color: cat.activity < 0 ? 'var(--color-negative)' : 'var(--text-dim)',
-        }}
-      >
-        {cat.activity !== 0 ? <MaskedAmount value={formatCompact(cat.activity)} /> : '—'}
-      </p>
+      {cat.activity !== 0 ? (
+        <Link
+          href={`/transactions?category_id=${cat.id}&date_from=${monthDateRange(month).from}&date_to=${monthDateRange(month).to}`}
+          className="text-right text-xs tabular-nums underline"
+          style={{ color: cat.activity < 0 ? 'var(--color-negative)' : 'var(--text-dim)' }}
+        >
+          <MaskedAmount value={formatCompact(cat.activity)} />
+        </Link>
+      ) : (
+        <p className="text-right text-xs tabular-nums" style={{ color: 'var(--text-dim)' }}>
+          —
+        </p>
+      )}
 
       {/* Disponible */}
       <p

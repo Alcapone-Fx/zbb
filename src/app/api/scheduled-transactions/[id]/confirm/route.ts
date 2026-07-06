@@ -111,7 +111,7 @@ export async function POST(
           amount: ccMirrorAmount(signedAmount),
           date: txDate,
           type: 'adjustment',
-          memo: 'Pago tarjeta (automático)',
+          memo: `Pago tarjeta (automático) — ${scheduled.payee || 'gasto'}`,
           tags: [],
           next_month: false,
         })

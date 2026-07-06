@@ -182,9 +182,16 @@
 - **web:** ✅ Account list (On-Budget / Off-Budget groups), create account form, edit name, archive action, net worth totals
 - **db:** ✅ Route Handlers: GET+POST `/api/accounts`, PATCH `/api/accounts/[id]`; CC system category inserted on credit_card account creation
 - **Tests:** ✅ 10 unit tests (buildCreditCardCategoryName × 3, computeNetWorth × 7) — all pass
-- **Migrations:** — (schema in M00)
+- **Migrations:** ⏳ pending — `supabase/migrations/20260705000002_backfill_cc_payment_categories.sql` (data repair, not schema — schema itself is in M00)
 
 #### AI Notes
+> **Migration pending (2026-07-05):** `20260705000002_backfill_cc_payment_categories.sql` is a one-time data repair (no `ALTER TABLE`).
+> Root cause: the "Sistema" `category_groups` row is created by `handle_new_user()`, which only fires if a Database Webhook on
+> `auth.users` INSERT was registered by hand in the Supabase dashboard — if that never happened (or happened after a user's account
+> already existed), credit_card accounts silently never got their "Pago · X" category, and existing card expenses are missing their
+> adjustment mirror. `POST /api/accounts` (`src/app/api/accounts/route.ts`) was also made self-healing (get-or-create the Sistema
+> group instead of silently giving up), so this backfill is a one-time catch-up, not an ongoing dependency.
+>
 > **Account types** (PRD §4.2): `checking | savings | credit_card | cash | investment | liability`.
 > `is_tracking_only = true` means Off-Budget.
 >

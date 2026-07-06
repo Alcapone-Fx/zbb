@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { Download, ChevronDown, ChevronUp } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Download, ChevronDown, ChevronUp, X } from "lucide-react";
 import type { TransactionWithDetails } from "@/types/transaction";
 import type { AccountWithBalance, AccountsResponse } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
@@ -45,6 +46,50 @@ function groupByCategory(txs: TransactionWithDetails[]): TransactionGroup[] {
   });
 }
 
+interface DateGroup {
+  date: string;
+  transactions: TransactionWithDetails[];
+  subtotal: number;
+}
+
+function groupByDate(txs: TransactionWithDetails[]): DateGroup[] {
+  const map = new Map<string, DateGroup>();
+  for (const tx of txs) {
+    if (!map.has(tx.date)) {
+      map.set(tx.date, { date: tx.date, transactions: [], subtotal: 0 });
+    }
+    const g = map.get(tx.date)!;
+    g.transactions.push(tx);
+    g.subtotal += tx.amount;
+  }
+  return Array.from(map.values());
+}
+
+function sortByAmountDesc(txs: TransactionWithDetails[]): TransactionWithDetails[] {
+  return [...txs].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+}
+
+function formatDayLabel(dateStr: string): string {
+  const today = todayLocalDateString();
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = `${yesterdayDate.getFullYear()}-${String(yesterdayDate.getMonth() + 1).padStart(2, "0")}-${String(yesterdayDate.getDate()).padStart(2, "0")}`;
+
+  if (dateStr === today) return "Hoy";
+  if (dateStr === yesterday) return "Ayer";
+
+  const [y, m, d] = dateStr.split("-");
+  const months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  return `${parseInt(d)} ${months[parseInt(m) - 1]} ${y}`;
+}
+
+const TYPE_FILTER_LABELS: Record<string, string> = {
+  expense: "Gastos",
+  income: "Ingresos",
+  transfer: "Transferencias",
+  adjustment: "Ajustes",
+};
+
 function buildExportUrl(params: Record<string, string | undefined>): string {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -54,20 +99,24 @@ function buildExportUrl(params: Record<string, string | undefined>): string {
 }
 
 export function TransactionsClient() {
+  const searchParams = useSearchParams();
+
   const [activeTab, setActiveTab] = useState<"historial" | "programadas">("historial");
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [categoryGroups, setCategoryGroups] = useState<CategoryGroupWithCategories[]>([]);
 
   const [dateFrom, setDateFrom] = useState(() => {
+    const fromParam = searchParams.get("date_from");
+    if (fromParam) return fromParam;
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
   });
-  const [dateTo, setDateTo] = useState(() => todayLocalDateString());
+  const [dateTo, setDateTo] = useState(() => searchParams.get("date_to") ?? todayLocalDateString());
 
-  const [filterType, setFilterType] = useState<string>("");
-  const [filterAccount, setFilterAccount] = useState<string>("");
-  const [filterCategory, setFilterCategory] = useState<string>("");
+  const [filterType, setFilterType] = useState<string>(() => searchParams.get("type") ?? "");
+  const [filterAccount, setFilterAccount] = useState<string>(() => searchParams.get("account_id") ?? "");
+  const [filterCategory, setFilterCategory] = useState<string>(() => searchParams.get("category_id") ?? "");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [initialLoading, setInitialLoading] = useState(true);
@@ -79,6 +128,7 @@ export function TransactionsClient() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<"date" | "category" | "amount">("date");
 
   const [confirm, setConfirm] = useState<{
     title: string;
@@ -88,100 +138,57 @@ export function TransactionsClient() {
     destructive?: boolean;
   } | null>(null);
 
-  // Initial data load — fetch transactions, accounts and category groups in parallel
+  // One-time: accounts + category groups (independent of transaction filters)
   useEffect(() => {
-    const now = new Date();
-    const initFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-    const initTo = todayLocalDateString();
-
-    async function load() {
-      try {
-        const [txRes, accRes, grpRes] = await Promise.all([
-          fetch(`/api/transactions?date_from=${initFrom}&date_to=${initTo}`),
-          fetch("/api/accounts"),
-          fetch("/api/categories/groups"),
-        ]);
-
-        const [txJson, accJson, grpJson] = (await Promise.all([
-          txRes.json(),
-          accRes.json(),
-          grpRes.json(),
-        ])) as [
-          { data?: TransactionWithDetails[]; error?: string },
+    Promise.all([fetch("/api/accounts"), fetch("/api/categories/groups")])
+      .then(async ([accRes, grpRes]) => {
+        const [accJson, grpJson] = (await Promise.all([accRes.json(), grpRes.json()])) as [
           AccountsResponse & { error?: string },
           { data?: CategoryGroupWithCategories[]; error?: string },
         ];
-
-        if (!txRes.ok) {
-          setApiError(txJson.error ?? "Error al cargar movimientos");
-        } else {
-          setTransactions(txJson.data ?? []);
-        }
-
         if (accRes.ok) {
           setAccounts([...(accJson.on_budget ?? []), ...(accJson.off_budget ?? [])]);
         }
-
         if (grpRes.ok) {
           setCategoryGroups(grpJson.data ?? []);
         }
-      } catch {
-        setApiError("Error de conexión");
-      } finally {
-        setInitialLoading(false);
-      }
-    }
-
-    void load();
+      })
+      .catch(() => {
+        // Non-fatal — account/category filter options just won't populate
+      });
   }, []);
 
-  const fetchTransactions = useCallback(
-    async (params?: {
-      from?: string;
-      to?: string;
-      type?: string;
-      account?: string;
-      category?: string;
-    }) => {
-      setLoading(true);
-      setApiError(null);
-      const from = params?.from ?? dateFrom;
-      const to = params?.to ?? dateTo;
-      const type = params?.type ?? filterType;
-      const account = params?.account ?? filterAccount;
-      const category = params?.category ?? filterCategory;
+  const fetchTransactions = useCallback(async () => {
+    setLoading(true);
+    setApiError(null);
 
-      const q = new URLSearchParams({ date_from: from, date_to: to });
-      if (type) q.set("type", type);
-      if (account) q.set("account_id", account);
-      if (category) q.set("category_id", category);
+    const q = new URLSearchParams({ date_from: dateFrom, date_to: dateTo });
+    if (filterType) q.set("type", filterType);
+    if (filterAccount) q.set("account_id", filterAccount);
+    if (filterCategory) q.set("category_id", filterCategory);
 
-      try {
-        const res = await fetch(`/api/transactions?${q.toString()}`);
-        const json = (await res.json()) as { data?: TransactionWithDetails[]; error?: string };
-        if (!res.ok) {
-          setApiError(json.error ?? "Error al cargar movimientos");
-        } else {
-          setTransactions(json.data ?? []);
-        }
-      } catch {
-        setApiError("Error de conexión");
-      } finally {
-        setLoading(false);
+    try {
+      const res = await fetch(`/api/transactions?${q.toString()}`);
+      const json = (await res.json()) as { data?: TransactionWithDetails[]; error?: string };
+      if (!res.ok) {
+        setApiError(json.error ?? "Error al cargar movimientos");
+      } else {
+        setTransactions(json.data ?? []);
       }
-    },
-    [dateFrom, dateTo, filterType, filterAccount, filterCategory]
-  );
+    } catch {
+      setApiError("Error de conexión");
+    } finally {
+      setLoading(false);
+      setInitialLoading(false);
+    }
+  }, [dateFrom, dateTo, filterType, filterAccount, filterCategory]);
 
-  function applyFilters() {
-    fetchTransactions({
-      from: dateFrom,
-      to: dateTo,
-      type: filterType,
-      account: filterAccount,
-      category: filterCategory,
-    });
-  }
+  // Auto-apply: fetch on mount and whenever any filter changes.
+  // Deferred via a resolved-promise microtask so setState doesn't run
+  // synchronously inside the effect body.
+  useEffect(() => {
+    Promise.resolve().then(() => fetchTransactions());
+  }, [fetchTransactions]);
 
   function handleDelete(tx: TransactionWithDetails) {
     setConfirm({
@@ -221,6 +228,8 @@ export function TransactionsClient() {
   }
 
   const txGroups = useMemo(() => groupByCategory(transactions), [transactions]);
+  const dateGroups = useMemo(() => groupByDate(transactions), [transactions]);
+  const amountSorted = useMemo(() => sortByAmountDesc(transactions), [transactions]);
 
   const totals = useMemo(() => {
     let income = 0;
@@ -462,16 +471,46 @@ export function TransactionsClient() {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={applyFilters}
-          disabled={loading}
-          className="w-full py-2 rounded-xl text-xs font-bold transition-opacity disabled:opacity-50"
-          style={{ background: "var(--ac)", color: "#fff" }}
-        >
-          {loading ? "Cargando..." : "Aplicar filtros"}
-        </button>
       </div>
+
+      {/* Active filter chips */}
+      {(filterType || filterAccount || filterCategory) && (
+        <div className="flex flex-wrap gap-1.5 px-5 pb-2">
+          {filterType && (
+            <button
+              type="button"
+              onClick={() => setFilterType("")}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+              style={{ background: "var(--ab)", color: "var(--ac)" }}
+            >
+              Tipo: {TYPE_FILTER_LABELS[filterType] ?? filterType}
+              <X size={12} />
+            </button>
+          )}
+          {filterAccount && (
+            <button
+              type="button"
+              onClick={() => setFilterAccount("")}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+              style={{ background: "var(--ab)", color: "var(--ac)" }}
+            >
+              Cuenta: {accounts.find((a) => a.id === filterAccount)?.name ?? filterAccount}
+              <X size={12} />
+            </button>
+          )}
+          {filterCategory && (
+            <button
+              type="button"
+              onClick={() => setFilterCategory("")}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+              style={{ background: "var(--ab)", color: "var(--ac)" }}
+            >
+              Categoría: {allCategories.find((c) => c.id === filterCategory)?.name ?? filterCategory}
+              <X size={12} />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Error states */}
       {(apiError || deleteError) && (
@@ -483,9 +522,30 @@ export function TransactionsClient() {
         </div>
       )}
 
-      {/* Transaction list grouped by category */}
+      {/* View selector */}
+      <div className="flex gap-1 px-5 pt-3 pb-1">
+        {(["date", "category", "amount"] as const).map((mode) => {
+          const labels = { date: "Fecha", category: "Categoría", amount: "Monto" };
+          return (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setViewMode(mode)}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+              style={{
+                background: viewMode === mode ? "var(--ab)" : "transparent",
+                color: viewMode === mode ? "var(--ac)" : "var(--text-sub)",
+              }}
+            >
+              {labels[mode]}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Transaction list */}
       <div className="pb-24">
-        {txGroups.length === 0 && !loading && (
+        {transactions.length === 0 && !loading && (
           <div
             className="flex flex-col items-center justify-center py-16 px-8 text-center"
           >
@@ -501,76 +561,158 @@ export function TransactionsClient() {
           </div>
         )}
 
-        {txGroups.map((group) => {
-          const key = group.category_id ?? "__none__";
-          const collapsed = collapsedGroups.has(key);
-          const isNegative = group.subtotal < 0;
-
-          return (
-            <div key={key}>
-              {/* Group header */}
-              <button
-                type="button"
-                onClick={() => toggleGroup(key)}
-                className="w-full flex items-center justify-between px-5 py-2.5"
-                style={{
-                  background: "var(--bg-elevated)",
-                  borderBottom: "1px solid var(--border-card)",
-                }}
-              >
-                <div className="text-left">
-                  <p
-                    className="text-xs font-bold uppercase tracking-wide"
-                    style={{ color: "var(--text-dim)" }}
-                  >
-                    {group.category_group_name
-                      ? `${group.category_group_name} · `
-                      : ""}
-                    {group.category_name ?? "Sin categoría"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold tabular-nums">
-                    <MaskedAmount
-                      value={formatCurrency(group.subtotal)}
-                      style={{
-                        color: isNegative
-                          ? "var(--color-negative)"
-                          : "var(--color-positive)",
-                      }}
-                    />
-                  </span>
-                  {collapsed ? (
-                    <ChevronDown size={14} style={{ color: "var(--text-dim)" }} />
-                  ) : (
-                    <ChevronUp size={14} style={{ color: "var(--text-dim)" }} />
-                  )}
-                </div>
-              </button>
-
-              {/* Rows */}
-              {!collapsed && (
-                <div>
-                  {group.transactions.map((tx) => (
-                    <div
-                      key={tx.id}
-                      style={{
-                        opacity: deletingId === tx.id ? 0.4 : 1,
-                        transition: "opacity 0.2s",
-                      }}
-                    >
-                      <TransactionRow
-                        tx={tx}
-                        onEdit={setEditTarget}
-                        onDelete={handleDelete}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+        {viewMode === "amount" &&
+          amountSorted.map((tx) => (
+            <div
+              key={tx.id}
+              style={{
+                opacity: deletingId === tx.id ? 0.4 : 1,
+                transition: "opacity 0.2s",
+              }}
+            >
+              <TransactionRow tx={tx} onEdit={setEditTarget} onDelete={handleDelete} />
             </div>
-          );
-        })}
+          ))}
+
+        {viewMode === "category" &&
+          txGroups.map((group) => {
+            const key = group.category_id ?? "__none__";
+            const collapsed = collapsedGroups.has(key);
+            const isNegative = group.subtotal < 0;
+
+            return (
+              <div key={key}>
+                {/* Group header */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(key)}
+                  className="w-full flex items-center justify-between px-5 py-2.5"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    borderBottom: "1px solid var(--border-card)",
+                  }}
+                >
+                  <div className="text-left">
+                    <p
+                      className="text-xs font-bold uppercase tracking-wide"
+                      style={{ color: "var(--text-dim)" }}
+                    >
+                      {group.category_group_name
+                        ? `${group.category_group_name} · `
+                        : ""}
+                      {group.category_name ?? "Sin categoría"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold tabular-nums">
+                      <MaskedAmount
+                        value={formatCurrency(group.subtotal)}
+                        style={{
+                          color: isNegative
+                            ? "var(--color-negative)"
+                            : "var(--color-positive)",
+                        }}
+                      />
+                    </span>
+                    {collapsed ? (
+                      <ChevronDown size={14} style={{ color: "var(--text-dim)" }} />
+                    ) : (
+                      <ChevronUp size={14} style={{ color: "var(--text-dim)" }} />
+                    )}
+                  </div>
+                </button>
+
+                {/* Rows */}
+                {!collapsed && (
+                  <div>
+                    {group.transactions.map((tx) => (
+                      <div
+                        key={tx.id}
+                        style={{
+                          opacity: deletingId === tx.id ? 0.4 : 1,
+                          transition: "opacity 0.2s",
+                        }}
+                      >
+                        <TransactionRow
+                          tx={tx}
+                          onEdit={setEditTarget}
+                          onDelete={handleDelete}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+        {viewMode === "date" &&
+          dateGroups.map((group) => {
+            const collapsed = collapsedGroups.has(group.date);
+            const isNegative = group.subtotal < 0;
+
+            return (
+              <div key={group.date}>
+                {/* Day header */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.date)}
+                  className="w-full flex items-center justify-between px-5 py-2.5"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    borderBottom: "1px solid var(--border-card)",
+                  }}
+                >
+                  <div className="text-left">
+                    <p
+                      className="text-xs font-bold uppercase tracking-wide"
+                      style={{ color: "var(--text-dim)" }}
+                    >
+                      {formatDayLabel(group.date)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold tabular-nums">
+                      <MaskedAmount
+                        value={formatCurrency(group.subtotal)}
+                        style={{
+                          color: isNegative
+                            ? "var(--color-negative)"
+                            : "var(--color-positive)",
+                        }}
+                      />
+                    </span>
+                    {collapsed ? (
+                      <ChevronDown size={14} style={{ color: "var(--text-dim)" }} />
+                    ) : (
+                      <ChevronUp size={14} style={{ color: "var(--text-dim)" }} />
+                    )}
+                  </div>
+                </button>
+
+                {/* Rows */}
+                {!collapsed && (
+                  <div>
+                    {group.transactions.map((tx) => (
+                      <div
+                        key={tx.id}
+                        style={{
+                          opacity: deletingId === tx.id ? 0.4 : 1,
+                          transition: "opacity 0.2s",
+                        }}
+                      >
+                        <TransactionRow
+                          tx={tx}
+                          onEdit={setEditTarget}
+                          onDelete={handleDelete}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
       </div>
 
       {/* Edit sheet */}

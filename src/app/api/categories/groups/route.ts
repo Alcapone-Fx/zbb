@@ -19,7 +19,7 @@ export async function GET() {
 
   const { data: categories, error: catsError } = await supabase
     .from('categories')
-    .select('id, group_id, name, is_system, is_archived, display_order')
+    .select('id, group_id, name, is_system, is_archived, display_order, linked_account_id')
     .eq('user_id', user.id)
     .order('display_order', { ascending: true })
 

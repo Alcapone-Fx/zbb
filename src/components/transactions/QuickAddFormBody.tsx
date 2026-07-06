@@ -105,6 +105,23 @@ export function QuickAddFormBody({ onClose }: Props) {
   const isOnBudget = selectedAccount ? !selectedAccount.is_tracking_only : true;
   const userGroups = groups.filter((g) => !g.is_system);
 
+  // A transfer into a credit card is always a card payment — auto-assign and
+  // lock its "Pago · X" system category, there's no legitimate use case for a
+  // different category on that specific leg.
+  const transferDestAccount = accounts.find((a) => a.id === transferToAccountId);
+  const ccPaymentCategory =
+    type === "transfer" && transferDestAccount?.type === "credit_card"
+      ? groups
+          .flatMap((g) => g.categories)
+          .find((c) => c.linked_account_id === transferDestAccount.id)
+      : undefined;
+
+  useEffect(() => {
+    if (!ccPaymentCategory) return;
+    // Deferred via microtask so setState doesn't run synchronously in the effect body.
+    Promise.resolve().then(() => setCategoryId(ccPaymentCategory.id));
+  }, [ccPaymentCategory]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -351,16 +368,29 @@ export function QuickAddFormBody({ onClose }: Props) {
           >
             Categoría (si alguna cuenta está en presupuesto)
           </label>
-          <AppSelect
-            value={categoryId}
-            onChange={setCategoryId}
-            placeholder="Sin categoría"
-            options={userGroups.flatMap((g) =>
-              g.categories
-                .filter((c) => !c.is_system && !c.is_archived)
-                .map((c) => ({ value: c.id, label: c.name, sub: g.name }))
-            )}
-          />
+          {ccPaymentCategory ? (
+            <div
+              className="w-full rounded-xl px-4 py-3 text-sm font-medium"
+              style={{
+                background: "var(--bg-elevated)",
+                color: "var(--text-sub)",
+                border: "1px solid var(--border-card)",
+              }}
+            >
+              {ccPaymentCategory.name} (automático)
+            </div>
+          ) : (
+            <AppSelect
+              value={categoryId}
+              onChange={setCategoryId}
+              placeholder="Sin categoría"
+              options={userGroups.flatMap((g) =>
+                g.categories
+                  .filter((c) => !c.is_system && !c.is_archived)
+                  .map((c) => ({ value: c.id, label: c.name, sub: g.name }))
+              )}
+            />
+          )}
         </div>
       )}
 

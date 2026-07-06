@@ -24,7 +24,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   }
 
-  const { amount, date } = parsed.data
+  const { amount, date, record_transaction } = parsed.data
 
   // Fetch the sinking fund (must belong to this user)
   const { data: fund, error: fundErr } = await supabase
@@ -56,9 +56,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  // Create expense transaction if both source account and category are available
+  // Create expense transaction if both source account and category are available —
+  // skipped when record_transaction is false (user already recorded the real
+  // expense elsewhere, e.g. paid with a credit card instead of the linked account).
   const effectiveCategoryId = groupCategoryId ?? fund.category_id ?? null
-  if (groupSourceAccountId && effectiveCategoryId) {
+  if (record_transaction && groupSourceAccountId && effectiveCategoryId) {
     const { error: txErr } = await supabase.from('transactions').insert({
       user_id: user.id,
       account_id: groupSourceAccountId,

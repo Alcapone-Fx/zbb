@@ -62,6 +62,7 @@ export type UpdateSinkingFundInput = z.infer<typeof updateSinkingFundSchema>
 export const paySchema = z.object({
   amount: z.number().positive(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  record_transaction: z.boolean().default(true),
 })
 
 // ── Wishlist ───────────────────────────────────────────────────────────────

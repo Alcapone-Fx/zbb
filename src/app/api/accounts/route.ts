@@ -114,18 +114,37 @@ export async function POST(req: Request) {
   }
 
   if (type === 'credit_card') {
+    // Get-or-create the user's "Sistema" category_group — normally created by
+    // handle_new_user() on signup, but that depends on a Supabase auth webhook
+    // being registered by hand, so it can't be relied on to always exist.
+    let systemGroupId: string | undefined
     const { data: systemGroup } = await supabase
       .from('category_groups')
       .select('id')
       .eq('user_id', user.id)
       .eq('is_system', true)
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (systemGroup) {
+      systemGroupId = systemGroup.id
+    } else {
+      const { data: newGroup, error: groupErr } = await supabase
+        .from('category_groups')
+        .insert({ user_id: user.id, name: 'Sistema', display_order: 9999, is_system: true })
+        .select('id')
+        .single()
+      if (groupErr || !newGroup) {
+        console.error('POST /api/accounts: failed to create Sistema group', groupErr)
+      } else {
+        systemGroupId = newGroup.id
+      }
+    }
+
+    if (systemGroupId) {
       const { error: catErr } = await supabase.from('categories').insert({
         user_id: user.id,
-        group_id: systemGroup.id,
+        group_id: systemGroupId,
         name: buildCreditCardCategoryName(name),
         is_system: true,
         display_order: 0,
@@ -134,11 +153,6 @@ export async function POST(req: Request) {
       if (catErr) {
         console.error('POST /api/accounts CC category insert error', catErr)
       }
-    } else {
-      console.warn(
-        'POST /api/accounts: system category_group not found for user',
-        user.id
-      )
     }
   }
 
