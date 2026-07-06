@@ -7,6 +7,7 @@ import {
   monthsRemaining,
   sinkingFundCalc,
   waterfallAllocate,
+  simulateGroupYear,
   emergencyFundTier,
 } from '../helpers-calc'
 
@@ -70,6 +71,20 @@ describe('monthsRemaining', () => {
     const result = monthsRemaining(future)
     expect(result).toBeGreaterThan(12)
   })
+  it('collapses this calendar month and next calendar month to 1', () => {
+    const now = new Date()
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-15`
+    const next = new Date(now.getFullYear(), now.getMonth() + 1, 15)
+    const nextMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-15`
+    expect(monthsRemaining(thisMonth)).toBe(1)
+    expect(monthsRemaining(nextMonth)).toBe(1)
+  })
+  it('gives 2 for the month after next', () => {
+    const now = new Date()
+    const target = new Date(now.getFullYear(), now.getMonth() + 2, 15)
+    const targetStr = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}-15`
+    expect(monthsRemaining(targetStr)).toBe(2)
+  })
 })
 
 describe('sinkingFundCalc', () => {
@@ -122,6 +137,51 @@ describe('waterfallAllocate', () => {
     const result = waterfallAllocate(funds, 100)
     expect(result.sooner).toBe(100)
     expect(result.later).toBe(0)
+  })
+})
+
+function monthsFromNow(offset: number): string {
+  const now = new Date()
+  const d = new Date(now.getFullYear(), now.getMonth() + offset, 15)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-15`
+}
+
+describe('simulateGroupYear', () => {
+  it('reconciles total suggested contributions with the funding gap', () => {
+    const funds = [
+      { id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0) },
+      { id: 'b', name: 'B', target_amount: 200, target_date: monthsFromNow(5) },
+      { id: 'c', name: 'C', target_amount: 300, target_date: monthsFromNow(11) },
+    ]
+    const result = simulateGroupYear(funds, 0)
+    const totalSuggested = result.reduce((s, m) => s + m.suggested, 0)
+    expect(totalSuggested).toBeCloseTo(600, 1)
+  })
+
+  it('ends the year at ~0 balance when every fund is paid within the window', () => {
+    const funds = [
+      { id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0) },
+      { id: 'b', name: 'B', target_amount: 200, target_date: monthsFromNow(5) },
+    ]
+    const result = simulateGroupYear(funds, 0)
+    expect(result[result.length - 1].endBalance).toBeCloseTo(0, 1)
+  })
+
+  it('pays off a fund due this month and drops it from later months', () => {
+    const funds = [{ id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0) }]
+    const result = simulateGroupYear(funds, 0)
+    expect(result[0].paidOut).toBe(100)
+    expect(result[0].dueFundNames).toEqual(['A'])
+    expect(result[1].dueFundNames).toEqual([])
+    expect(result[1].suggested).toBe(0)
+  })
+
+  it('credits an existing balance before asking for new contributions', () => {
+    const funds = [{ id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0) }]
+    const result = simulateGroupYear(funds, 100)
+    expect(result[0].suggested).toBe(0)
+    expect(result[0].paidOut).toBe(100)
+    expect(result[0].endBalance).toBe(0)
   })
 })
 

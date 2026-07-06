@@ -25,12 +25,25 @@ export function weekendPlannerCalc(
   return Math.max(0, (available - fixedExpenses) / weekendCount)
 }
 
+/**
+ * Calendar-month gap between (fromYear, fromMonth) and (targetYear, targetMonth),
+ * both 1-indexed. Minimum 1 — this month and next calendar month both collapse to 1.
+ */
+function monthsBetween(
+  fromYear: number,
+  fromMonth: number,
+  targetYear: number,
+  targetMonth: number
+): number {
+  const months = (targetYear - fromYear) * 12 + (targetMonth - fromMonth)
+  return Math.max(1, months)
+}
+
 /** Returns months from today until targetDate (YYYY-MM-DD). Minimum 1. */
 export function monthsRemaining(targetDate: string): number {
   const now = new Date()
   const [y, m] = targetDate.split('-').map(Number)
-  const months = (y - now.getFullYear()) * 12 + (m - (now.getMonth() + 1))
-  return Math.max(1, months)
+  return monthsBetween(now.getFullYear(), now.getMonth() + 1, y, m)
 }
 
 export function sinkingFundCalc(
@@ -66,6 +79,91 @@ export function waterfallAllocate(
     remaining -= alloc
   }
   return allocations
+}
+
+export interface YearSimFund {
+  id: string
+  name: string
+  target_amount: number
+  target_date: string
+}
+
+export interface YearSimMonth {
+  label: string
+  startBalance: number
+  suggested: number
+  paidOut: number
+  endBalance: number
+  dueFundNames: string[]
+}
+
+const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
+/**
+ * Projects how a group's suggested monthly contribution and account balance
+ * would evolve over the next `months` calendar months, assuming the user
+ * deposits exactly the suggested amount each month and pays off funds
+ * exactly on their target_date. Reuses waterfallAllocate/sinkingFundCalc —
+ * the same functions driving the live per-fund/per-group display — so this
+ * projection never drifts from the real app logic.
+ */
+export function simulateGroupYear(
+  funds: YearSimFund[],
+  startBalance: number,
+  months = 12
+): YearSimMonth[] {
+  const now = new Date()
+  let curYear = now.getFullYear()
+  let curMonth = now.getMonth() + 1
+  let balance = startBalance
+  let active = funds.map((f) => {
+    const [ty, tm] = f.target_date.split('-').map(Number)
+    return { ...f, ty, tm }
+  })
+
+  const results: YearSimMonth[] = []
+
+  for (let i = 0; i < months; i++) {
+    const waterfallInput: WaterfallFund[] = active.map((f) => ({
+      id: f.id,
+      target_amount: f.target_amount,
+      target_date: f.target_date,
+    }))
+    const allocations = waterfallAllocate(waterfallInput, balance)
+
+    let suggested = 0
+    for (const f of active) {
+      const remaining = monthsBetween(curYear, curMonth, f.ty, f.tm)
+      suggested += sinkingFundCalc(f.target_amount, allocations[f.id] ?? 0, remaining)
+    }
+
+    const startBalanceThisMonth = balance
+    balance += suggested
+
+    const due = active.filter((f) => f.ty === curYear && f.tm === curMonth)
+    const paidOut = due.reduce((sum, f) => sum + f.target_amount, 0)
+    balance -= paidOut
+
+    results.push({
+      label: `${MONTH_LABELS[curMonth - 1]}-${String(curYear).slice(2)}`,
+      startBalance: startBalanceThisMonth,
+      suggested,
+      paidOut,
+      endBalance: balance,
+      dueFundNames: due.map((f) => f.name),
+    })
+
+    const dueIds = new Set(due.map((f) => f.id))
+    active = active.filter((f) => !dueIds.has(f.id))
+
+    curMonth++
+    if (curMonth > 12) {
+      curMonth = 1
+      curYear++
+    }
+  }
+
+  return results
 }
 
 export interface EmergencyFundTierInfo {

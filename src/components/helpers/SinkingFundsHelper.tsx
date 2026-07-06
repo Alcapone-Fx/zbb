@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { sinkingFundCalc, monthsRemaining, waterfallAllocate } from '@/lib/zbb/helpers-calc'
+import { sinkingFundCalc, monthsRemaining, waterfallAllocate, simulateGroupYear } from '@/lib/zbb/helpers-calc'
 import type { SinkingFund, SinkingFundGroup } from '@/types/helpers'
 import { AppSelect } from '@/components/ui/AppSelect'
 
@@ -283,6 +283,9 @@ export function SinkingFundsHelper() {
 
   // Collapsed groups
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+
+  // Groups showing the annual projection
+  const [projectionOpenGroups, setProjectionOpenGroups] = useState<Set<string>>(new Set())
 
   // Per-group asignar feedback
   const [asignarState, setAsignarState] = useState<
@@ -630,20 +633,6 @@ export function SinkingFundsHelper() {
     return result
   }, [groups, funds, accountBalances])
 
-  function groupSavingsProgress(
-    groupId: string
-  ): { totalTarget: number; saved: number; remaining: number; pct: number } | null {
-    const group = groups.find((g) => g.id === groupId)
-    if (!group?.source_account_id) return null
-    const unpaid = funds.filter((f) => f.group_id === groupId && !f.is_paid)
-    const totalTarget = unpaid.reduce((sum, f) => sum + f.target_amount, 0)
-    if (totalTarget <= 0) return null
-    const saved = accountBalances[group.source_account_id] ?? 0
-    const remaining = Math.max(0, totalTarget - saved)
-    const pct = Math.min(100, (saved / totalTarget) * 100)
-    return { totalTarget, saved, remaining, pct }
-  }
-
   function groupMonthlyTotal(groupId: string): number {
     return funds
       .filter((f) => f.group_id === groupId && !f.is_paid)
@@ -657,6 +646,15 @@ export function SinkingFundsHelper() {
 
   function toggleCollapse(groupId: string) {
     setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupId)) next.delete(groupId)
+      else next.add(groupId)
+      return next
+    })
+  }
+
+  function toggleProjection(groupId: string) {
+    setProjectionOpenGroups((prev) => {
       const next = new Set(prev)
       if (next.has(groupId)) next.delete(groupId)
       else next.add(groupId)
@@ -921,9 +919,21 @@ export function SinkingFundsHelper() {
         {groups.map((group) => {
           const groupFunds = funds.filter((f) => f.group_id === group.id)
           const totalMonthly = groupMonthlyTotal(group.id)
-          const progress = groupSavingsProgress(group.id)
           const isCollapsed = collapsedGroups.has(group.id)
           const asState = asignarState[group.id]
+          const isProjectionOpen = projectionOpenGroups.has(group.id)
+          const unpaidGroupFunds = groupFunds.filter((f) => !f.is_paid)
+          const projection = isProjectionOpen
+            ? simulateGroupYear(
+                unpaidGroupFunds.map((f) => ({
+                  id: f.id,
+                  name: f.name,
+                  target_amount: f.target_amount,
+                  target_date: f.target_date,
+                })),
+                group.source_account_id ? accountBalances[group.source_account_id] ?? 0 : 0
+              )
+            : null
 
           return (
             <div
@@ -979,25 +989,6 @@ export function SinkingFundsHelper() {
                   </p>
                 )}
 
-                {progress && (
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-sub)' }}>
-                      <span>Objetivo: ${progress.totalTarget.toFixed(2)}</span>
-                      <span>Ahorrado: ${progress.saved.toFixed(2)}</span>
-                      <span>Falta: ${progress.remaining.toFixed(2)}</span>
-                    </div>
-                    <div
-                      className="mt-1 h-2 rounded-full overflow-hidden"
-                      style={{ background: 'rgba(0,0,0,0.2)' }}
-                    >
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${progress.pct}%`, background: 'var(--ac)' }}
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {totalMonthly > 0 && (
                   <div className="flex items-center justify-between mt-2">
                     <p className="text-xs font-semibold" style={{ color: 'var(--ac)' }}>
@@ -1030,7 +1021,58 @@ export function SinkingFundsHelper() {
                     {asState.msg}
                   </p>
                 )}
+
+                {unpaidGroupFunds.length > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleProjection(group.id)
+                    }}
+                    className="text-xs mt-2 underline"
+                    style={{ color: 'var(--text-sub)' }}
+                  >
+                    {isProjectionOpen ? 'Ocultar proyección anual' : 'Ver proyección anual'}
+                  </button>
+                )}
               </div>
+
+              {/* Annual projection */}
+              {projection && (
+                <div
+                  className="px-4 py-3"
+                  style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-card)' }}
+                >
+                  <div
+                    className="grid px-1 pb-1.5 text-[10px] font-bold uppercase tracking-wide"
+                    style={{ gridTemplateColumns: '48px 1fr 72px 72px', color: 'var(--text-dim)' }}
+                  >
+                    <span>Mes</span>
+                    <span>Vence</span>
+                    <span className="text-right">Sugerido</span>
+                    <span className="text-right">Saldo</span>
+                  </div>
+                  {projection.map((row) => (
+                    <div
+                      key={row.label}
+                      className="grid px-1 py-1 text-xs"
+                      style={{
+                        gridTemplateColumns: '48px 1fr 72px 72px',
+                        borderTop: '1px solid var(--border-card)',
+                        color: 'var(--text-main)',
+                      }}
+                    >
+                      <span>{row.label}</span>
+                      <span className="truncate" style={{ color: 'var(--text-sub)' }}>
+                        {row.dueFundNames.join(', ') || '—'}
+                      </span>
+                      <span className="text-right tabular-nums">${row.suggested.toFixed(2)}</span>
+                      <span className="text-right tabular-nums" style={{ color: 'var(--text-sub)' }}>
+                        ${row.endBalance.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Group fund rows */}
               {!isCollapsed && (
