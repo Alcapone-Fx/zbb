@@ -51,6 +51,7 @@ interface FundFormState {
   target_date: string
   group_id: string
   recurrence: 'one_time' | 'annual'
+  recurrence_months: string
   notes: string
 }
 
@@ -66,6 +67,7 @@ const EMPTY_FUND_FORM: FundFormState = {
   target_date: '',
   group_id: '',
   recurrence: 'one_time',
+  recurrence_months: '12',
   notes: '',
 }
 
@@ -454,6 +456,7 @@ export function SinkingFundsHelper() {
       target_date: fund.target_date,
       group_id: fund.group_id ?? '',
       recurrence: fund.recurrence,
+      recurrence_months: String(fund.recurrence_months ?? 12),
       notes: fund.notes ?? '',
     })
     setFundEditingId(fund.id)
@@ -476,6 +479,10 @@ export function SinkingFundsHelper() {
       setFundFormError('El monto objetivo debe ser mayor a 0'); return
     }
     if (!fundForm.target_date) { setFundFormError('La fecha objetivo es requerida'); return }
+    const months = parseInt(fundForm.recurrence_months, 10)
+    if (fundForm.recurrence === 'annual' && (isNaN(months) || months <= 0)) {
+      setFundFormError('La recurrencia en meses debe ser mayor a 0'); return
+    }
 
     setFundSaving(true)
     setFundFormError(null)
@@ -485,6 +492,7 @@ export function SinkingFundsHelper() {
       target_date: fundForm.target_date,
       group_id: fundForm.group_id || null,
       recurrence: fundForm.recurrence,
+      recurrence_months: fundForm.recurrence === 'annual' ? months : null,
       notes: fundForm.notes.trim() || null,
     }
     try {
@@ -860,15 +868,35 @@ export function SinkingFundsHelper() {
               onChange={(v) => setFundForm((f) => ({ ...f, recurrence: v as 'one_time' | 'annual' }))}
               options={[
                 { value: 'one_time', label: 'Una vez', sub: 'Se archiva al marcarse como pagada' },
-                { value: 'annual', label: 'Anual', sub: 'Al pagar, la fecha objetivo avanza un año automáticamente' },
+                { value: 'annual', label: 'Recurrente', sub: 'Al pagar, la fecha objetivo avanza automáticamente' },
               ]}
             />
             <p className="text-xs px-1" style={{ color: 'var(--text-dim)' }}>
               {fundForm.recurrence === 'annual'
-                ? 'Ideal para gastos que se repiten cada año: seguro, mantenimiento, cumpleaños, etc.'
+                ? 'Ideal para gastos que se repiten cada cierto tiempo: seguro, mantenimiento, cumpleaños, etc.'
                 : 'Ideal para metas únicas: remodelar, comprar un artículo, viaje puntual, etc.'}
             </p>
           </div>
+
+          {fundForm.recurrence === 'annual' && (
+            <div className="space-y-1">
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-sub)' }}>
+                Cada cuántos meses
+              </label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={fundForm.recurrence_months}
+                onChange={(e) => setFundForm((f) => ({ ...f, recurrence_months: e.target.value }))}
+                className={inputClass}
+                style={inputStyle}
+              />
+              <p className="text-xs px-1" style={{ color: 'var(--text-dim)' }}>
+                Ej: 12 = anual, 24 = cada 2 años, 6 = semestral.
+              </p>
+            </div>
+          )}
 
           <input
             type="text"

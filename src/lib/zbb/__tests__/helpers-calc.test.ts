@@ -8,6 +8,7 @@ import {
   sinkingFundCalc,
   waterfallAllocate,
   simulateGroupYear,
+  advanceMonths,
   emergencyFundTier,
 } from '../helpers-calc'
 
@@ -182,6 +183,27 @@ describe('simulateGroupYear', () => {
     expect(result[0].suggested).toBe(0)
     expect(result[0].paidOut).toBe(100)
     expect(result[0].endBalance).toBe(0)
+  })
+})
+
+describe('advanceMonths', () => {
+  it('advances by exactly 12 months (annual, unchanged behavior)', () => {
+    expect(advanceMonths('2026-08-15', 12)).toBe('2027-08-15')
+  })
+  it('advances by 6 months (semestral)', () => {
+    expect(advanceMonths('2026-08-15', 6)).toBe('2027-02-15')
+  })
+  it('advances by 24 months (every 2 years)', () => {
+    expect(advanceMonths('2026-08-15', 24)).toBe('2028-08-15')
+  })
+  it('advances by 60 months (every 5 years)', () => {
+    expect(advanceMonths('2026-08-15', 60)).toBe('2031-08-15')
+  })
+  it('clamps Feb 29 to Feb 28 when landing on a non-leap year', () => {
+    expect(advanceMonths('2024-02-29', 12)).toBe('2025-02-28')
+  })
+  it('clamps day-of-month overflow when landing on a shorter month', () => {
+    expect(advanceMonths('2026-01-31', 1)).toBe('2026-02-28')
   })
 })
 

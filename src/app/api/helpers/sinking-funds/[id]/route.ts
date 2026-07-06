@@ -59,7 +59,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     .eq('id', id)
     .eq('user_id', user.id)
     .select(
-      'id, user_id, group_id, category_id, name, target_amount, target_date, recurrence, is_paid, last_paid_amount, last_paid_date, notes'
+      'id, user_id, group_id, category_id, name, target_amount, target_date, recurrence, recurrence_months, is_paid, last_paid_amount, last_paid_date, notes'
     )
     .single()
 

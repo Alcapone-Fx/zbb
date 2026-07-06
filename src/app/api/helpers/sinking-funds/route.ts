@@ -12,7 +12,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('sinking_funds')
     .select(
-      'id, user_id, group_id, category_id, name, target_amount, target_date, recurrence, is_paid, last_paid_amount, last_paid_date, notes, categories!category_id(name)'
+      'id, user_id, group_id, category_id, name, target_amount, target_date, recurrence, recurrence_months, is_paid, last_paid_amount, last_paid_date, notes, categories!category_id(name)'
     )
     .eq('user_id', user.id)
     .order('target_date', { ascending: true })
@@ -33,6 +33,7 @@ export async function GET() {
     target_amount: Number(row.target_amount),
     target_date: row.target_date,
     recurrence: row.recurrence as 'one_time' | 'annual',
+    recurrence_months: row.recurrence_months ?? null,
     is_paid: row.is_paid ?? false,
     last_paid_amount: row.last_paid_amount != null ? Number(row.last_paid_amount) : null,
     last_paid_date: row.last_paid_date ?? null,
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   }
 
-  const { group_id, category_id, name, target_amount, target_date, recurrence, notes } = parsed.data
+  const { group_id, category_id, name, target_amount, target_date, recurrence, recurrence_months, notes } = parsed.data
 
   // Validate category ownership if provided
   if (category_id) {
@@ -95,10 +96,11 @@ export async function POST(req: Request) {
       target_amount,
       target_date,
       recurrence: recurrence ?? 'one_time',
+      recurrence_months: recurrence_months ?? null,
       notes: notes ?? null,
     })
     .select(
-      'id, user_id, group_id, category_id, name, target_amount, target_date, recurrence, is_paid, last_paid_amount, last_paid_date, notes'
+      'id, user_id, group_id, category_id, name, target_amount, target_date, recurrence, recurrence_months, is_paid, last_paid_amount, last_paid_date, notes'
     )
     .single()
 

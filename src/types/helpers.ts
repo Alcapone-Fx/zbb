@@ -34,6 +34,7 @@ export interface SinkingFund {
   target_amount: number
   target_date: string  // YYYY-MM-DD
   recurrence: 'one_time' | 'annual'
+  recurrence_months: number | null
   is_paid: boolean
   last_paid_amount: number | null
   last_paid_date: string | null
@@ -47,6 +48,7 @@ export const createSinkingFundSchema = z.object({
   target_amount: z.number().positive(),
   target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)'),
   recurrence: z.enum(['one_time', 'annual']).default('one_time'),
+  recurrence_months: z.number().int().positive().max(120).nullable().optional(),
   notes: z.string().max(500).nullable().optional(),
 })
 

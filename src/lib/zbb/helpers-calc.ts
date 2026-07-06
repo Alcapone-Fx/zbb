@@ -56,6 +56,17 @@ export function sinkingFundCalc(
   return needed / remaining
 }
 
+/** Advances a YYYY-MM-DD date by `months`, clamping day-of-month overflow (e.g. Feb 29 → Feb 28). */
+export function advanceMonths(dateStr: string, months: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const totalMonths = y * 12 + (m - 1) + months
+  const newYear = Math.floor(totalMonths / 12)
+  const newMonth = (totalMonths % 12) + 1
+  const daysInNewMonth = new Date(newYear, newMonth, 0).getDate()
+  const clampedDay = Math.min(d, daysInNewMonth)
+  return `${newYear}-${String(newMonth).padStart(2, '0')}-${String(clampedDay).padStart(2, '0')}`
+}
+
 export interface WaterfallFund {
   id: string
   target_amount: number

@@ -1,16 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { paySchema } from '@/types/helpers'
-
-/** Advances a YYYY-MM-DD date by exactly one year, clamping leap-day overflow. */
-function advanceOneYear(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const newYear = y + 1
-  // Clamp Feb 29 → Feb 28 on non-leap years
-  const daysInNewMonth = new Date(newYear, m, 0).getDate()
-  const clampedDay = Math.min(d, daysInNewMonth)
-  return `${newYear}-${String(m).padStart(2, '0')}-${String(clampedDay).padStart(2, '0')}`
-}
+import { advanceMonths } from '@/lib/zbb/helpers-calc'
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
@@ -38,7 +29,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // Fetch the sinking fund (must belong to this user)
   const { data: fund, error: fundErr } = await supabase
     .from('sinking_funds')
-    .select('id, user_id, group_id, name, target_date, recurrence, category_id')
+    .select('id, user_id, group_id, name, target_date, recurrence, recurrence_months, category_id')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
@@ -84,9 +75,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  // Advance target_date by 1 year for annual funds
+  // Advance target_date for annual funds — recurrence_months defaults to 12
+  // so existing annual funds (created before this field existed) are unaffected.
   const newTargetDate =
-    fund.recurrence === 'annual' ? advanceOneYear(fund.target_date) : fund.target_date
+    fund.recurrence === 'annual'
+      ? advanceMonths(fund.target_date, fund.recurrence_months ?? 12)
+      : fund.target_date
 
   // Update the sinking fund
   const { data: updated, error: updateErr } = await supabase
@@ -100,7 +94,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .eq('id', id)
     .eq('user_id', user.id)
     .select(
-      'id, user_id, group_id, category_id, name, target_amount, target_date, recurrence, is_paid, last_paid_amount, last_paid_date, notes'
+      'id, user_id, group_id, category_id, name, target_amount, target_date, recurrence, recurrence_months, is_paid, last_paid_amount, last_paid_date, notes'
     )
     .single()
 
