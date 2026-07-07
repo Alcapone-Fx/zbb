@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildCreditCardCategoryName, computeNetWorth } from '@/lib/zbb/accounts'
+import { buildCreditCardCategoryName, computeNetWorth, sumBalancesByAccount } from '@/lib/zbb/accounts'
 import type { AccountWithBalance } from '@/types/account'
 
 function makeAccount(overrides: Partial<AccountWithBalance>): AccountWithBalance {
@@ -87,5 +87,40 @@ describe('computeNetWorth', () => {
       makeAccount({ type: 'liability', balance: 1000, is_archived: true }),
     ]
     expect(computeNetWorth(accounts)).toBe(5000)
+  })
+})
+
+describe('sumBalancesByAccount', () => {
+  it('sums plain transactions per account', () => {
+    const txs = [
+      { account_id: 'a', category_id: null, amount: -50 },
+      { account_id: 'a', category_id: null, amount: 100 },
+      { account_id: 'b', category_id: null, amount: 20 },
+    ]
+    expect(sumBalancesByAccount(txs, new Set())).toEqual({ a: 50, b: 20 })
+  })
+
+  it('excludes transactions tagged with a CC-mirror category', () => {
+    const txs = [
+      { account_id: 'card', category_id: 'groceries', amount: -50 }, // real expense
+      { account_id: 'card', category_id: 'cc-payment-cat', amount: 50 }, // mirror
+    ]
+    expect(sumBalancesByAccount(txs, new Set(['cc-payment-cat']))).toEqual({ card: -50 })
+  })
+
+  it('does not exclude reconciliation adjustments (different category)', () => {
+    const txs = [
+      { account_id: 'checking', category_id: 'misc', amount: -12.5 },
+    ]
+    expect(sumBalancesByAccount(txs, new Set(['cc-payment-cat']))).toEqual({ checking: -12.5 })
+  })
+
+  it('handles null category_id safely', () => {
+    const txs = [{ account_id: 'a', category_id: null, amount: 10 }]
+    expect(sumBalancesByAccount(txs, new Set(['x']))).toEqual({ a: 10 })
+  })
+
+  it('returns an empty map for no transactions', () => {
+    expect(sumBalancesByAccount([], new Set())).toEqual({})
   })
 })

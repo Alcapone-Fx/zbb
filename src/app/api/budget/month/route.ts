@@ -91,6 +91,14 @@ export async function GET(req: Request) {
   const categoryIds = allCats.map((c) => c.id)
   const onBudgetIds = (accountsRes.data ?? []).map((a) => a.id)
 
+  // CC "Pago · X" categories get their activity computed synthetically below
+  // (from the linked account's real expense/transfer net) — the literal mirror
+  // transactions must be excluded from the generic activity sum, or their
+  // activity would be counted twice.
+  const ccMirrorCategoryIds = new Set(
+    allCats.filter((c) => c.linked_account_id).map((c) => c.id)
+  )
+
   // Build allocations map: month -> catId -> assigned_amount
   const monthById: Record<string, string> = {}
   for (const m of allMonths) monthById[m.id] = m.month
@@ -137,18 +145,28 @@ export async function GET(req: Request) {
     const txMonth = tx.date.slice(0, 7) // YYYY-MM
     const amount = Number(tx.amount)
 
-    // Activity for disponible: all transactions within budget months range
-    if (txMonth >= earliestMonth && txMonth <= targetMonth && tx.category_id) {
+    // Activity for disponible: all transactions within budget months range,
+    // excluding CC mirror transactions (their category gets its activity
+    // computed synthetically below, from the linked account's real net).
+    if (
+      txMonth >= earliestMonth &&
+      txMonth <= targetMonth &&
+      tx.category_id &&
+      !ccMirrorCategoryIds.has(tx.category_id)
+    ) {
       if (!activitiesMap[txMonth]) activitiesMap[txMonth] = {}
       activitiesMap[txMonth][tx.category_id] =
         (activitiesMap[txMonth][tx.category_id] ?? 0) + amount
     }
 
-    // Income for Dinero a Asignar
+    // Income for Dinero a Asignar — a positive reconciliation adjustment counts
+    // as found income, but a CC mirror adjustment (same type, opposite intent)
+    // must not, or every credit card purchase would inflate "Dinero a Asignar".
+    const isCcMirror = Boolean(tx.category_id && ccMirrorCategoryIds.has(tx.category_id))
     const countsAsIncome =
       tx.type === 'income' ||
       tx.type === 'opening_balance' ||
-      (tx.type === 'adjustment' && amount > 0)
+      (tx.type === 'adjustment' && amount > 0 && !isCcMirror)
 
     if (countsAsIncome) {
       if (txMonth === targetMonth && !tx.next_month) {

@@ -40,7 +40,7 @@ export async function GET() {
   const months = buildMonths(12)
   const cutoff = months[months.length - 1].lastDay
 
-  const [accountsRes, txRes] = await Promise.all([
+  const [accountsRes, txRes, ccCategoriesRes] = await Promise.all([
     supabase
       .from('accounts')
       .select('id, name, type, is_tracking_only, is_emergency_fund, is_archived, starting_balance, created_at')
@@ -49,9 +49,15 @@ export async function GET() {
 
     supabase
       .from('transactions')
-      .select('account_id, amount, date')
+      .select('account_id, category_id, amount, date')
       .eq('user_id', user.id)
       .lte('date', cutoff),
+
+    supabase
+      .from('categories')
+      .select('id')
+      .eq('user_id', user.id)
+      .not('linked_account_id', 'is', null),
   ])
 
   if (accountsRes.error || txRes.error) {
@@ -61,10 +67,12 @@ export async function GET() {
 
   const allAccounts = accountsRes.data ?? []
   const allTx = txRes.data ?? []
+  const ccMirrorCategoryIds = new Set((ccCategoriesRes.data ?? []).map((c) => c.id))
 
   const points: NetWorthPoint[] = months.map(({ ym, lastDay, label }) => {
     const balanceMap: Record<string, number> = {}
     for (const tx of allTx) {
+      if (tx.category_id && ccMirrorCategoryIds.has(tx.category_id)) continue
       if (tx.date <= lastDay) {
         balanceMap[tx.account_id] = (balanceMap[tx.account_id] ?? 0) + Number(tx.amount)
       }

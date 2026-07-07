@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { dashboardPeriodSchema } from '@/types/dashboard'
 import { computePeriodDateRange, computeIdealVsReal } from '@/lib/zbb/dashboard'
-import { computeNetWorth } from '@/lib/zbb/accounts'
+import { computeNetWorth, sumBalancesByAccount } from '@/lib/zbb/accounts'
 import type { AccountWithBalance } from '@/types/account'
 import type { DashboardData, GroupBreakdownRow } from '@/types/dashboard'
 
@@ -60,10 +60,17 @@ export async function GET(req: Request) {
   }
 
   // Net worth — real-time from all account balances (needs full tx history, not just period)
-  const allTxRes = await supabase
-    .from('transactions')
-    .select('account_id, amount')
-    .eq('user_id', user.id)
+  const [allTxRes, ccCategoriesRes] = await Promise.all([
+    supabase
+      .from('transactions')
+      .select('account_id, category_id, amount')
+      .eq('user_id', user.id),
+    supabase
+      .from('categories')
+      .select('id')
+      .eq('user_id', user.id)
+      .not('linked_account_id', 'is', null),
+  ])
 
   if (allTxRes.error) {
     console.error('GET /api/dashboard allTx error', allTxRes.error)
@@ -72,10 +79,8 @@ export async function GET(req: Request) {
 
   const allAccounts = accountsRes.data ?? []
   const allTxForNetWorth = allTxRes.data ?? []
-  const balanceMap: Record<string, number> = {}
-  for (const t of allTxForNetWorth) {
-    balanceMap[t.account_id] = (balanceMap[t.account_id] ?? 0) + Number(t.amount)
-  }
+  const ccMirrorCategoryIds = new Set((ccCategoriesRes.data ?? []).map((c) => c.id))
+  const balanceMap = sumBalancesByAccount(allTxForNetWorth, ccMirrorCategoryIds)
   const accountsWithBalance: AccountWithBalance[] = allAccounts.map((a) => ({
     id: a.id,
     name: a.name,

@@ -66,21 +66,36 @@ export async function POST(req: Request) {
 
   if (!account) return NextResponse.json({ error: 'Cuenta no encontrada' }, { status: 404 })
 
-  // Compute app_balance = sum of all transactions up to date
-  const { data: txData, error: txErr } = await supabase
-    .from('transactions')
-    .select('amount')
-    .eq('account_id', account_id)
-    .eq('user_id', user.id)
-    .lte('date', date)
+  // Compute app_balance = sum of all transactions up to date, excluding CC
+  // "Pago · X" mirror transactions (see sumBalancesByAccount) — those always
+  // cancel out the real expense on this same account and would otherwise make
+  // a credit card's app_balance look artificially near-zero during reconciliation.
+  const [{ data: txData, error: txErr }, { data: ccCategories }] = await Promise.all([
+    supabase
+      .from('transactions')
+      .select('category_id, amount')
+      .eq('account_id', account_id)
+      .eq('user_id', user.id)
+      .lte('date', date),
+    supabase
+      .from('categories')
+      .select('id')
+      .eq('user_id', user.id)
+      .not('linked_account_id', 'is', null),
+  ])
 
   if (txErr) {
     console.error('POST /api/reconciliation balance query error', txErr)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
+  const ccMirrorCategoryIds = new Set((ccCategories ?? []).map((c) => c.id))
   const app_balance =
-    Math.round((txData ?? []).reduce((sum, tx) => sum + Number(tx.amount), 0) * 100) / 100
+    Math.round(
+      (txData ?? [])
+        .filter((tx) => !(tx.category_id && ccMirrorCategoryIds.has(tx.category_id)))
+        .reduce((sum, tx) => sum + Number(tx.amount), 0) * 100
+    ) / 100
 
   const adjustment_amount = calcAdjustmentAmount(bank_balance, app_balance)
 

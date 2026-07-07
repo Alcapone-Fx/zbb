@@ -134,8 +134,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Cuenta no encontrada' }, { status: 404 })
   }
 
-  // Enforce category requirement for on-budget accounts
-  if (type !== 'transfer' && !account.is_tracking_only && !category_id) {
+  // Enforce category requirement for expenses on on-budget accounts only.
+  // Income is deliberately exempt — uncategorized income is exactly what
+  // increases "Dinero a Asignar" (Ready to Assign) for later allocation.
+  if (type === 'expense' && !account.is_tracking_only && !category_id) {
     return NextResponse.json(
       { error: 'La categoría es requerida para cuentas en presupuesto' },
       { status: 400 }
