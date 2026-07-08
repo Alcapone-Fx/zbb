@@ -260,12 +260,24 @@ function FundRow({
 
 // ── Main component ─────────────────────────────────────────────────────────
 
-export function SinkingFundsHelper() {
+interface FundPrefill {
+  name: string
+  estimatedCost: number | null
+  wishlistItemId: string
+}
+
+interface Props {
+  prefill?: FundPrefill | null
+  onPrefillConsumed?: () => void
+}
+
+export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
   const [groups, setGroups] = useState<SinkingFundGroup[]>([])
   const [funds, setFunds] = useState<SinkingFund[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountBalances, setAccountBalances] = useState<Record<string, number>>({})
+  const [assignedByCategory, setAssignedByCategory] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)  // true = initial load in progress
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -283,6 +295,7 @@ export function SinkingFundsHelper() {
   const [fundForm, setFundForm] = useState<FundFormState>(EMPTY_FUND_FORM)
   const [fundSaving, setFundSaving] = useState(false)
   const [fundFormError, setFundFormError] = useState<string | null>(null)
+  const [pendingWishlistConversion, setPendingWishlistConversion] = useState<string | null>(null)
 
   // Pay form
   const [payingFundId, setPayingFundId] = useState<string | null>(null)
@@ -303,6 +316,23 @@ export function SinkingFundsHelper() {
 
   const month = currentMonthStr()
 
+  // Opening a fund creation form pre-filled from a promoted wishlist item
+  useEffect(() => {
+    if (!prefill) return
+    Promise.resolve().then(() => {
+      setFundForm({
+        ...EMPTY_FUND_FORM,
+        name: prefill.name,
+        target_amount: prefill.estimatedCost != null ? String(prefill.estimatedCost) : '',
+      })
+      setFundEditingId(null)
+      setFundFormError(null)
+      setFundFormOpen(true)
+      setGroupFormOpen(false)
+      setPendingWishlistConversion(prefill.wishlistItemId)
+    })
+  }, [prefill])
+
   // ── Data loading ───────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -313,13 +343,22 @@ export function SinkingFundsHelper() {
       fetch('/api/helpers/sinking-funds').then((r) => r.json()),
       fetch('/api/categories/groups').then((r) => r.json()),
       fetch('/api/accounts').then((r) => r.json()),
+      fetch(`/api/budget/month?month=${month}`).then((r) => r.json()),
     ])
-      .then(([groupsJson, fundsJson, catsJson, accountsJson]) => {
+      .then(([groupsJson, fundsJson, catsJson, accountsJson, budgetJson]) => {
         if (cancelled) return
         if (groupsJson.error) { setError(groupsJson.error); setLoading(false); return }
         if (fundsJson.error) { setError(fundsJson.error); setLoading(false); return }
         setGroups(groupsJson.data ?? [])
         setFunds(fundsJson.data ?? [])
+
+        const assigned: Record<string, number> = {}
+        for (const g of budgetJson.data?.groups ?? []) {
+          for (const c of g.categories ?? []) {
+            assigned[c.id] = c.assigned
+          }
+        }
+        setAssignedByCategory(assigned)
 
         const cats: Category[] = []
         for (const g of catsJson.data ?? []) {
@@ -351,6 +390,7 @@ export function SinkingFundsHelper() {
       })
 
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey])
 
   function load() {
@@ -477,6 +517,8 @@ export function SinkingFundsHelper() {
     setFundEditingId(null)
     setFundForm(EMPTY_FUND_FORM)
     setFundFormError(null)
+    setPendingWishlistConversion(null)
+    onPrefillConsumed?.()
   }
 
   async function handleFundSubmit() {
@@ -516,6 +558,18 @@ export function SinkingFundsHelper() {
       if (!res.ok) {
         setFundFormError(json.error ?? 'Error al guardar')
       } else {
+        if (!isEdit && pendingWishlistConversion && json.data?.id) {
+          try {
+            await fetch(`/api/helpers/wishlist/${pendingWishlistConversion}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ converted_to_fund_id: json.data.id }),
+            })
+          } catch {
+            // Fund was created successfully either way — losing the wishlist
+            // "converted" flag is a minor, recoverable inconsistency.
+          }
+        }
         load()
         closeFundForm()
       }
@@ -630,6 +684,9 @@ export function SinkingFundsHelper() {
         ? `$${rounded.toFixed(2)} asignado`
         : (json.error ?? 'Error al asignar')
       setAsignarState((s) => ({ ...s, [group.id]: { saving: false, msg } }))
+      if (res.ok) {
+        setAssignedByCategory((s) => ({ ...s, [group.category_id as string]: rounded }))
+      }
     } catch {
       setAsignarState((s) => ({ ...s, [group.id]: { saving: false, msg: 'Error de conexión' } }))
     }
@@ -819,6 +876,15 @@ export function SinkingFundsHelper() {
             {fundEditingId ? 'Editar meta' : 'Nueva meta de ahorro'}
           </p>
 
+          {pendingWishlistConversion && (
+            <p
+              className="text-xs px-3 py-2 rounded-lg"
+              style={{ background: 'var(--ab)', color: 'var(--ac)' }}
+            >
+              ✨ Convirtiendo desde tu Lista de Deseos — completá fecha, categoría y recurrencia.
+            </p>
+          )}
+
           <input
             type="text"
             placeholder="Nombre de la meta"
@@ -954,6 +1020,8 @@ export function SinkingFundsHelper() {
         {groups.map((group) => {
           const groupFunds = funds.filter((f) => f.group_id === group.id)
           const totalMonthly = groupMonthlyTotal(group.id)
+          const assignedThisMonth = group.category_id ? assignedByCategory[group.category_id] ?? 0 : 0
+          const isFullyAssigned = totalMonthly > 0 && assignedThisMonth >= totalMonthly - 0.01
           const isCollapsed = collapsedGroups.has(group.id)
           const asState = asignarState[group.id]
           const isProjectionOpen = projectionOpenGroups.has(group.id)
@@ -1028,9 +1096,23 @@ export function SinkingFundsHelper() {
 
                 {totalMonthly > 0 && (
                   <div className="flex items-center justify-between mt-2">
-                    <p className="text-xs font-semibold" style={{ color: 'var(--ac)' }}>
-                      Total: ${totalMonthly.toFixed(2)}/mes
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-semibold" style={{ color: 'var(--ac)' }}>
+                        Total: ${totalMonthly.toFixed(2)}/mes
+                      </p>
+                      {group.category_id && (
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={
+                            isFullyAssigned
+                              ? { color: 'var(--color-positive)', background: 'rgba(34,197,94,0.12)' }
+                              : { color: '#f59e0b', background: 'rgba(245,158,11,0.12)' }
+                          }
+                        >
+                          {isFullyAssigned ? '✓ Asignado' : '⚠ Pendiente este mes'}
+                        </span>
+                      )}
+                    </div>
                     {group.category_id && (
                       <button
                         onClick={(e) => {

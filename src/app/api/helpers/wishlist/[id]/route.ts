@@ -28,7 +28,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     .update(parsed.data)
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id, user_id, name, estimated_cost, priority, notes, created_at')
+    .select('id, user_id, name, estimated_cost, priority, notes, created_at, converted_to_fund_id')
     .single()
 
   if (updateErr || !item) {

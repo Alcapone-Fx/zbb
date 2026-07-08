@@ -11,7 +11,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('wishlist_items')
-    .select('id, user_id, name, estimated_cost, priority, notes, created_at')
+    .select('id, user_id, name, estimated_cost, priority, notes, created_at, converted_to_fund_id')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       priority: priority ?? null,
       notes: notes ?? null,
     })
-    .select('id, user_id, name, estimated_cost, priority, notes, created_at')
+    .select('id, user_id, name, estimated_cost, priority, notes, created_at, converted_to_fund_id')
     .single()
 
   if (insertErr || !item) {

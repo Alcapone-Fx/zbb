@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Flat config doesn't read .gitignore automatically — worktrees are full
+    // repo checkouts and must be excluded explicitly or every one gets linted.
+    ".claude/worktrees/**",
   ]),
 ]);
 

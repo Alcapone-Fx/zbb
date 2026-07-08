@@ -77,6 +77,7 @@ export interface WishlistItem {
   priority: WishlistPriority | null
   notes: string | null
   created_at: string
+  converted_to_fund_id: string | null
 }
 
 export const createWishlistItemSchema = z.object({
@@ -86,7 +87,9 @@ export const createWishlistItemSchema = z.object({
   notes: z.string().max(500).nullable().optional(),
 })
 
-export const updateWishlistItemSchema = createWishlistItemSchema.partial()
+export const updateWishlistItemSchema = createWishlistItemSchema.partial().extend({
+  converted_to_fund_id: z.string().uuid().nullable().optional(),
+})
 
 export type CreateWishlistItemInput = z.infer<typeof createWishlistItemSchema>
 export type UpdateWishlistItemInput = z.infer<typeof updateWishlistItemSchema>
