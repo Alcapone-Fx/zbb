@@ -150,9 +150,9 @@ function monthsFromNow(offset: number): string {
 describe('simulateGroupYear', () => {
   it('reconciles total suggested contributions with the funding gap', () => {
     const funds = [
-      { id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0) },
-      { id: 'b', name: 'B', target_amount: 200, target_date: monthsFromNow(5) },
-      { id: 'c', name: 'C', target_amount: 300, target_date: monthsFromNow(11) },
+      { id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0), recurrence: 'one_time' as const, recurrence_months: null },
+      { id: 'b', name: 'B', target_amount: 200, target_date: monthsFromNow(5), recurrence: 'one_time' as const, recurrence_months: null },
+      { id: 'c', name: 'C', target_amount: 300, target_date: monthsFromNow(11), recurrence: 'one_time' as const, recurrence_months: null },
     ]
     const result = simulateGroupYear(funds, 0)
     const totalSuggested = result.reduce((s, m) => s + m.suggested, 0)
@@ -161,15 +161,15 @@ describe('simulateGroupYear', () => {
 
   it('ends the year at ~0 balance when every fund is paid within the window', () => {
     const funds = [
-      { id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0) },
-      { id: 'b', name: 'B', target_amount: 200, target_date: monthsFromNow(5) },
+      { id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0), recurrence: 'one_time' as const, recurrence_months: null },
+      { id: 'b', name: 'B', target_amount: 200, target_date: monthsFromNow(5), recurrence: 'one_time' as const, recurrence_months: null },
     ]
     const result = simulateGroupYear(funds, 0)
     expect(result[result.length - 1].endBalance).toBeCloseTo(0, 1)
   })
 
-  it('pays off a fund due this month and drops it from later months', () => {
-    const funds = [{ id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0) }]
+  it('pays off a one_time fund due this month and drops it from later months', () => {
+    const funds = [{ id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0), recurrence: 'one_time' as const, recurrence_months: null }]
     const result = simulateGroupYear(funds, 0)
     expect(result[0].paidOut).toBe(100)
     expect(result[0].dueFundNames).toEqual(['A'])
@@ -178,11 +178,37 @@ describe('simulateGroupYear', () => {
   })
 
   it('credits an existing balance before asking for new contributions', () => {
-    const funds = [{ id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0) }]
+    const funds = [{ id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0), recurrence: 'one_time' as const, recurrence_months: null }]
     const result = simulateGroupYear(funds, 100)
     expect(result[0].suggested).toBe(0)
     expect(result[0].paidOut).toBe(100)
     expect(result[0].endBalance).toBe(0)
+  })
+
+  it('brings a recurring fund back within the window at its next cycle', () => {
+    // Due this month, recurs every 6 months — should reappear at month index 6.
+    const funds = [{ id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0), recurrence: 'annual' as const, recurrence_months: 6 }]
+    const result = simulateGroupYear(funds, 0)
+    expect(result[0].dueFundNames).toEqual(['A']) // month 0: due, paid
+    expect(result[6].dueFundNames).toEqual(['A']) // month 6: due again
+    expect(result[6].paidOut).toBe(100)
+  })
+
+  it('does not bring back a recurring fund whose next cycle falls outside the window', () => {
+    // Due this month, recurs every 12 months — next cycle is month 12, outside a 12-month window (indices 0-11).
+    const funds = [{ id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0), recurrence: 'annual' as const, recurrence_months: 12 }]
+    const result = simulateGroupYear(funds, 0)
+    expect(result[0].dueFundNames).toEqual(['A'])
+    for (let i = 1; i < result.length; i++) {
+      expect(result[i].dueFundNames).toEqual([])
+    }
+  })
+
+  it('a one_time fund never reappears even with the same due date pattern', () => {
+    const funds = [{ id: 'a', name: 'A', target_amount: 100, target_date: monthsFromNow(0), recurrence: 'one_time' as const, recurrence_months: 6 }]
+    const result = simulateGroupYear(funds, 0)
+    expect(result[0].dueFundNames).toEqual(['A'])
+    expect(result[6].dueFundNames).toEqual([])
   })
 })
 

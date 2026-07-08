@@ -965,6 +965,8 @@ export function SinkingFundsHelper() {
                   name: f.name,
                   target_amount: f.target_amount,
                   target_date: f.target_date,
+                  recurrence: f.recurrence,
+                  recurrence_months: f.recurrence_months,
                 })),
                 group.source_account_id ? accountBalances[group.source_account_id] ?? 0 : 0
               )

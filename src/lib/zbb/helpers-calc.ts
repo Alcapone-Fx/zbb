@@ -97,6 +97,8 @@ export interface YearSimFund {
   name: string
   target_amount: number
   target_date: string
+  recurrence: 'one_time' | 'annual'
+  recurrence_months: number | null
 }
 
 export interface YearSimMonth {
@@ -164,8 +166,22 @@ export function simulateGroupYear(
       dueFundNames: due.map((f) => f.name),
     })
 
+    // Recurring funds advance to their next cycle instead of disappearing —
+    // a fund due this month with recurrence_months=6 should reappear 6
+    // months later if that still falls within the projected window.
     const dueIds = new Set(due.map((f) => f.id))
-    active = active.filter((f) => !dueIds.has(f.id))
+    active = active.reduce<typeof active>((acc, f) => {
+      if (!dueIds.has(f.id)) {
+        acc.push(f)
+        return acc
+      }
+      if (f.recurrence === 'annual') {
+        const newDate = advanceMonths(f.target_date, f.recurrence_months ?? 12)
+        const [ty, tm] = newDate.split('-').map(Number)
+        acc.push({ ...f, target_date: newDate, ty, tm })
+      }
+      return acc
+    }, [])
 
     curMonth++
     if (curMonth > 12) {
