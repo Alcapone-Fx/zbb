@@ -2,6 +2,40 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { updateUserSettingsSchema } from '@/types/helpers'
 
+const SELECT_FIELDS =
+  'emergency_fund_min_expense, grocery_category_id, recurring_budget_category_id, recurring_budget_pattern'
+
+export async function GET() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: settings, error } = await supabase
+    .from('user_settings')
+    .upsert({ user_id: user.id }, { onConflict: 'user_id' })
+    .select(SELECT_FIELDS)
+    .single()
+
+  if (error) {
+    console.error('GET /api/user-settings error', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+
+  return NextResponse.json({
+    data: {
+      emergency_fund_min_expense:
+        settings.emergency_fund_min_expense != null
+          ? Number(settings.emergency_fund_min_expense)
+          : null,
+      grocery_category_id: settings.grocery_category_id,
+      recurring_budget_category_id: settings.recurring_budget_category_id,
+      recurring_budget_pattern: settings.recurring_budget_pattern,
+    },
+  })
+}
+
 export async function PATCH(req: Request) {
   const supabase = await createClient()
   const {
@@ -27,7 +61,7 @@ export async function PATCH(req: Request) {
       { user_id: user.id, ...parsed.data },
       { onConflict: 'user_id' }
     )
-    .select('emergency_fund_min_expense')
+    .select(SELECT_FIELDS)
     .single()
 
   if (error) {
@@ -41,6 +75,9 @@ export async function PATCH(req: Request) {
         settings.emergency_fund_min_expense != null
           ? Number(settings.emergency_fund_min_expense)
           : null,
+      grocery_category_id: settings.grocery_category_id,
+      recurring_budget_category_id: settings.recurring_budget_category_id,
+      recurring_budget_pattern: settings.recurring_budget_pattern,
     },
   })
 }

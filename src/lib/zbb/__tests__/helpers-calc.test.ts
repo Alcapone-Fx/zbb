@@ -10,6 +10,7 @@ import {
   simulateGroupYear,
   advanceMonths,
   emergencyFundTier,
+  avgRecentActivity,
 } from '../helpers-calc'
 
 describe('daysInMonth', () => {
@@ -29,6 +30,38 @@ describe('groceryCalc', () => {
   })
   it('handles February in non-leap year', () => {
     expect(groceryCalc(10, 2025, 2)).toBe(280)
+  })
+})
+
+describe('avgRecentActivity', () => {
+  it('averages the last 3 complete months, excluding the current partial one', () => {
+    const months = [
+      { activity: -100 },
+      { activity: -200 },
+      { activity: -300 },
+      { activity: -9999 }, // current month, partial — must be excluded
+    ]
+    expect(avgRecentActivity(months)).toBeCloseTo(200, 5)
+  })
+
+  it('uses absolute value of activity (expenses are negative)', () => {
+    const months = [{ activity: -50 }, { activity: -50 }]
+    expect(avgRecentActivity(months)).toBe(50)
+  })
+
+  it('returns null when there is no history', () => {
+    expect(avgRecentActivity([])).toBeNull()
+    expect(avgRecentActivity([{ activity: -100 }])).toBeNull() // only the current month exists
+  })
+
+  it('uses fewer than 3 months when that is all there is', () => {
+    const months = [{ activity: -100 }, { activity: -50 }, { activity: -9999 }]
+    expect(avgRecentActivity(months)).toBe(75)
+  })
+
+  it('can include the current month when explicitly asked', () => {
+    const months = [{ activity: -100 }, { activity: -200 }]
+    expect(avgRecentActivity(months, false)).toBe(150)
   })
 })
 

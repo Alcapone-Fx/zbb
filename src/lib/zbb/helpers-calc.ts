@@ -6,6 +6,22 @@ export function groceryCalc(dailyRate: number, year: number, month: number): num
   return dailyRate * daysInMonth(year, month)
 }
 
+/**
+ * Average of the last 3 *complete* months' absolute activity, used to suggest
+ * a starting value from real history. Excludes the current (in-progress, and
+ * therefore partial) month by default — including it would understate the
+ * average early in the month. Returns null when there's no history yet.
+ */
+export function avgRecentActivity(
+  months: { activity: number }[],
+  excludeCurrentMonth = true
+): number | null {
+  const relevant = excludeCurrentMonth ? months.slice(0, -1) : months
+  const last3 = relevant.slice(-3)
+  if (last3.length === 0) return null
+  return last3.reduce((sum, m) => sum + Math.abs(m.activity), 0) / last3.length
+}
+
 /** Counts the number of full weekends (Sat-Sun pairs) as Saturday count in the month. */
 export function countWeekends(year: number, month: number): number {
   const days = daysInMonth(year, month)

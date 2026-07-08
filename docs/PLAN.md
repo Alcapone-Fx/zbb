@@ -590,12 +590,17 @@
 - **web:** ✅ Helpers hub page + 5 helper screens: Grocery Calculator, Weekend Planner, Sinking Funds (CRUD + calculation), Emergency Fund Tiers, Wishlist (CRUD)
 - **db:** ✅ Route Handlers for sinking_funds CRUD; Route Handlers for wishlist_items CRUD; read-only query for emergency fund; user-settings PATCH for emergency_fund_min_expense
 - **Tests:** ✅ 29 unit tests for all helper calc functions (pure functions — no I/O)
-- **Migrations:** ⏳ pending — `supabase/migrations/20260705000001_sinking_fund_recurrence_months.sql`, `20260707000001_wishlist_converted_to_fund.sql` (schema otherwise in M00)
+- **Migrations:** ⏳ pending — `supabase/migrations/20260705000001_sinking_fund_recurrence_months.sql`, `20260707000001_wishlist_converted_to_fund.sql`, `20260708000001_user_settings_spend_calculators.sql` (schema otherwise in M00)
 
 #### AI Notes
 > **Migration pending (2026-07-07):** `20260707000001_wishlist_converted_to_fund.sql` adds nullable `wishlist_items.converted_to_fund_id`
 > (FK to `sinking_funds`, `ON DELETE SET NULL`). Powers the "Convertir en Fondo de Ahorro" bridge — promoting a wishlist item pre-fills
 > the sinking fund creation form with its name/estimated_cost, then marks the item converted (soft, not deleted) on success.
+>
+> **Migration pending (2026-07-08):** `20260708000001_user_settings_spend_calculators.sql` adds `grocery_category_id`,
+> `recurring_budget_category_id`, `recurring_budget_pattern` to `user_settings`. Grocery Calculator and the renamed
+> Recurring Budget Planner (was Weekend Planner) now remember their chosen category and auto-suggest a value from
+> `GET /api/budget/trends/[categoryId]`'s real transaction history instead of starting blank every visit.
 >
 > **Migration pending (2026-07-05):** `20260705000001_sinking_fund_recurrence_months.sql` adds nullable `sinking_funds.recurrence_months`
 > (months between cycles for `recurrence = 'annual'`; `NULL` defaults to 12, so existing rows are unaffected). Generalizes the annual

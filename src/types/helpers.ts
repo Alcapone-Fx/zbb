@@ -111,8 +111,20 @@ export interface EmergencyFundData {
 
 // ── User Settings ──────────────────────────────────────────────────────────
 
+export type RecurringBudgetPattern = 'daily' | 'weekend'
+
+export interface UserSettings {
+  emergency_fund_min_expense: number | null
+  grocery_category_id: string | null
+  recurring_budget_category_id: string | null
+  recurring_budget_pattern: RecurringBudgetPattern | null
+}
+
 export const updateUserSettingsSchema = z.object({
   emergency_fund_min_expense: z.number().positive().nullable().optional(),
+  grocery_category_id: z.string().uuid().nullable().optional(),
+  recurring_budget_category_id: z.string().uuid().nullable().optional(),
+  recurring_budget_pattern: z.enum(['daily', 'weekend']).nullable().optional(),
 })
 
 export type UpdateUserSettingsInput = z.infer<typeof updateUserSettingsSchema>
