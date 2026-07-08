@@ -9,6 +9,7 @@ import { CreateAccountModal } from "@/components/accounts/CreateAccountModal";
 import { EditAccountModal } from "@/components/accounts/EditAccountModal";
 import { ReconciliationSheet } from "@/components/accounts/ReconciliationSheet";
 import { MaskedAmount } from "@/components/shared/MaskedAmount";
+import { useRefreshStore } from "@/stores/refresh.store";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-419", {
@@ -36,6 +37,7 @@ function computeMiniStats(data: AccountsResponse) {
 }
 
 export default function AccountsPage() {
+  const transactionsVersion = useRefreshStore((s) => s.transactionsVersion);
   const [data, setData] = useState<AccountsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export default function AccountsPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAccounts();
-  }, [fetchAccounts]);
+  }, [fetchAccounts, transactionsVersion]);
 
   async function archiveAccount(account: AccountWithBalance): Promise<void> {
     const res = await fetch(`/api/accounts/${account.id}`, {

@@ -5,6 +5,7 @@ import { X, Check, SkipForward, Edit2, Repeat } from "lucide-react";
 import type { ScheduledTransaction } from "@/types/scheduled-transaction";
 import { FREQUENCY_LABELS } from "@/types/scheduled-transaction";
 import { todayLocalDateString } from "@/lib/zbb/date";
+import { useRefreshStore } from "@/stores/refresh.store";
 
 interface Props {
   isOpen: boolean;
@@ -36,6 +37,7 @@ interface ItemCardProps {
 }
 
 function PendingItemCard({ item, onDone }: ItemCardProps) {
+  const { bumpTransactions } = useRefreshStore();
   const [mode, setMode] = useState<"idle" | "editing">("idle");
   const [editAmount, setEditAmount] = useState(
     Math.abs(item.amount).toFixed(2)
@@ -73,6 +75,7 @@ function PendingItemCard({ item, onDone }: ItemCardProps) {
         const json = await res.json();
         setError(json.error ?? "Error al confirmar");
       } else {
+        bumpTransactions();
         onDone();
       }
     } catch {

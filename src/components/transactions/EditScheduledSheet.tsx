@@ -33,6 +33,14 @@ export function EditScheduledSheet({ item, accounts, groups, onClose, onSaved }:
   const [error, setError] = useState<string | null>(null);
 
   const userGroups = groups.filter((g) => !g.is_system);
+  const categorySections = userGroups
+    .map((g) => ({
+      label: g.name,
+      options: g.categories
+        .filter((c) => !c.is_system && !c.is_archived)
+        .map((c) => ({ value: c.id, label: c.name })),
+    }))
+    .filter((s) => s.options.length > 0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -174,11 +182,8 @@ export function EditScheduledSheet({ item, accounts, groups, onClose, onSaved }:
               value={categoryId}
               onChange={setCategoryId}
               placeholder="Sin categoría"
-              options={userGroups.flatMap((g) =>
-                g.categories
-                  .filter((c) => !c.is_system && !c.is_archived)
-                  .map((c) => ({ value: c.id, label: c.name, sub: g.name }))
-              )}
+              sections={categorySections}
+              searchable
             />
           </div>
 

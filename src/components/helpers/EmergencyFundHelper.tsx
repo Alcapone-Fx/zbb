@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { emergencyFundTier } from '@/lib/zbb/helpers-calc'
 import type { EmergencyFundData } from '@/types/helpers'
+import { useRefreshStore } from '@/stores/refresh.store'
 
 const TIER_LABELS = ['Crítico', '1–3 meses', '3–6 meses', '6+ meses']
 const TIER_COLORS: Record<string, string> = {
@@ -19,6 +20,7 @@ const TIER_BG: Record<string, string> = {
 }
 
 export function EmergencyFundHelper() {
+  const transactionsVersion = useRefreshStore((s) => s.transactionsVersion)
   const [data, setData] = useState<EmergencyFundData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -41,7 +43,7 @@ export function EmergencyFundHelper() {
         if (!cancelled) { setError('Error de conexión'); setLoading(false) }
       })
     return () => { cancelled = true }
-  }, [refreshKey])
+  }, [refreshKey, transactionsVersion])
 
   function load() {
     setLoading(true)

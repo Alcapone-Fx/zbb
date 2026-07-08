@@ -6,6 +6,7 @@ import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { todayLocalDateString } from "@/lib/zbb/date";
+import { useRefreshStore } from "@/stores/refresh.store";
 
 interface Props {
   account: AccountWithBalance | null;
@@ -23,6 +24,7 @@ function formatCurrency(amount: number): string {
 }
 
 export function ReconciliationSheet({ account, onClose, onDone }: Props) {
+  const { bumpTransactions } = useRefreshStore();
   const today = todayLocalDateString();
 
   const [date, setDate] = useState(today);
@@ -97,6 +99,7 @@ export function ReconciliationSheet({ account, onClose, onDone }: Props) {
       if (!res.ok) {
         setError(json.error ?? "Error al conciliar");
       } else {
+        if (needsAdjustment) bumpTransactions();
         setDone(true);
       }
     } catch {

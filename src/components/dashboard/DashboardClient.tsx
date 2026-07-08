@@ -7,6 +7,7 @@ import { SpendingDonut } from './SpendingDonut'
 import { NetWorthChart } from './NetWorthChart'
 import { IdealVsRealTable } from './IdealVsRealTable'
 import type { DashboardData, DashboardPeriod } from '@/types/dashboard'
+import { useRefreshStore } from '@/stores/refresh.store'
 
 const EMPTY_DATA: DashboardData = {
   period: 'current_month',
@@ -21,7 +22,9 @@ const EMPTY_DATA: DashboardData = {
 }
 
 export function DashboardClient() {
+  const transactionsVersion = useRefreshStore((s) => s.transactionsVersion)
   const [data, setData] = useState<DashboardData>(EMPTY_DATA)
+  const [period, setPeriod] = useState<DashboardPeriod>('current_month')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -43,14 +46,14 @@ export function DashboardClient() {
     }
   }, [])
 
-  // Fetch current month on mount
+  // Fetch on mount, period change, or when a transaction changes elsewhere
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchPeriod('current_month')
-  }, [fetchPeriod])
+    fetchPeriod(period)
+  }, [fetchPeriod, period, transactionsVersion])
 
   function handlePeriodChange(p: DashboardPeriod) {
-    fetchPeriod(p)
+    setPeriod(p)
   }
 
   return (

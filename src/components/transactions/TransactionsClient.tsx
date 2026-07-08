@@ -13,6 +13,7 @@ import { AppSelect } from "@/components/ui/AppSelect";
 import { MaskedAmount } from "@/components/shared/MaskedAmount";
 import { ConfirmSheet } from "@/components/shared/ConfirmSheet";
 import { todayLocalDateString } from "@/lib/zbb/date";
+import { useRefreshStore } from "@/stores/refresh.store";
 
 interface TransactionGroup {
   category_id: string | null;
@@ -100,6 +101,7 @@ function buildExportUrl(params: Record<string, string | undefined>): string {
 
 export function TransactionsClient() {
   const searchParams = useSearchParams();
+  const { transactionsVersion, bumpTransactions } = useRefreshStore();
 
   const [activeTab, setActiveTab] = useState<"historial" | "programadas">("historial");
   const [transactions, setTransactions] = useState<TransactionWithDetails[]>([]);
@@ -188,7 +190,7 @@ export function TransactionsClient() {
   // synchronously inside the effect body.
   useEffect(() => {
     Promise.resolve().then(() => fetchTransactions());
-  }, [fetchTransactions]);
+  }, [fetchTransactions, transactionsVersion]);
 
   function handleDelete(tx: TransactionWithDetails) {
     setConfirm({
@@ -219,6 +221,7 @@ export function TransactionsClient() {
               t.transfer_pair_id !== tx.id
           )
         );
+        bumpTransactions();
       }
     } catch {
       setDeleteError("Error de conexión");
@@ -248,6 +251,20 @@ export function TransactionsClient() {
         .flatMap((g) =>
           g.categories.filter((c) => !c.is_system && !c.is_archived)
         ),
+    [categoryGroups]
+  );
+
+  const categorySections = useMemo(
+    () =>
+      categoryGroups
+        .filter((g) => !g.is_system)
+        .map((g) => ({
+          label: g.name,
+          options: g.categories
+            .filter((c) => !c.is_system && !c.is_archived)
+            .map((c) => ({ value: c.id, label: c.name })),
+        }))
+        .filter((s) => s.options.length > 0),
     [categoryGroups]
   );
 
@@ -466,7 +483,8 @@ export function TransactionsClient() {
               value={filterCategory}
               onChange={setFilterCategory}
               placeholder="Todas las categorías"
-              options={allCategories.map((c) => ({ value: c.id, label: c.name }))}
+              sections={categorySections}
+              searchable
             />
           </div>
         )}

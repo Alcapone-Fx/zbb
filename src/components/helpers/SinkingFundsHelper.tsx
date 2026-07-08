@@ -5,6 +5,7 @@ import { sinkingFundCalc, monthsRemaining, waterfallAllocate, simulateGroupYear 
 import { todayLocalDateString } from '@/lib/zbb/date'
 import type { SinkingFund, SinkingFundGroup } from '@/types/helpers'
 import { AppSelect } from '@/components/ui/AppSelect'
+import { useRefreshStore } from '@/stores/refresh.store'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -272,6 +273,7 @@ interface Props {
 }
 
 export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
+  const { transactionsVersion, bumpTransactions } = useRefreshStore()
   const [groups, setGroups] = useState<SinkingFundGroup[]>([])
   const [funds, setFunds] = useState<SinkingFund[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -391,7 +393,7 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
 
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey])
+  }, [refreshKey, transactionsVersion])
 
   function load() {
     setLoading(true)
@@ -636,6 +638,7 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
               : f
           )
         )
+        if (payForm.recordTransaction) bumpTransactions()
         closePay()
       }
     } catch {

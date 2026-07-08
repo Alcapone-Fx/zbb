@@ -59,8 +59,21 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
+  const allAccounts = accountsRes.data ?? []
+
+  // On-budget account IDs (to filter period transactions)
+  const onBudgetIds = new Set(
+    allAccounts.filter((a) => !a.is_tracking_only).map((a) => a.id)
+  )
+
+  // Category IDs referenced by period transactions — only depends on txRes
+  // (batch 1), so this lookup can run alongside the net-worth batch below
+  // instead of waiting for it.
+  const periodTx = (txRes.data ?? []).filter((t) => onBudgetIds.has(t.account_id))
+  const categoryIdsInTx = [...new Set(periodTx.filter((t) => t.category_id).map((t) => t.category_id as string))]
+
   // Net worth — real-time from all account balances (needs full tx history, not just period)
-  const [allTxRes, ccCategoriesRes] = await Promise.all([
+  const [allTxRes, ccCategoriesRes, catGroupRes] = await Promise.all([
     supabase
       .from('transactions')
       .select('account_id, category_id, amount')
@@ -70,6 +83,9 @@ export async function GET(req: Request) {
       .select('id')
       .eq('user_id', user.id)
       .not('linked_account_id', 'is', null),
+    categoryIdsInTx.length > 0
+      ? supabase.from('categories').select('id, group_id').in('id', categoryIdsInTx)
+      : Promise.resolve({ data: [], error: null }),
   ])
 
   if (allTxRes.error) {
@@ -77,7 +93,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
-  const allAccounts = accountsRes.data ?? []
   const allTxForNetWorth = allTxRes.data ?? []
   const ccMirrorCategoryIds = new Set((ccCategoriesRes.data ?? []).map((c) => c.id))
   const balanceMap = sumBalancesByAccount(allTxForNetWorth, ccMirrorCategoryIds)
@@ -94,30 +109,14 @@ export async function GET(req: Request) {
   }))
   const net_worth = computeNetWorth(accountsWithBalance)
 
-  // On-budget account IDs (to filter period transactions)
-  const onBudgetIds = new Set(
-    allAccounts.filter((a) => !a.is_tracking_only).map((a) => a.id)
-  )
-
   // KPI aggregations from period transactions on on-budget accounts
   let net_income = 0
   let total_expense = 0
   const groupSpendingMap: Record<string, number> = {} // group_id → spending (positive abs)
 
-  // Need category→group mapping for group spending
-  // Fetch categories with group_id for the period transactions that have a category_id
-  const periodTx = (txRes.data ?? []).filter((t) => onBudgetIds.has(t.account_id))
-  const categoryIdsInTx = [...new Set(periodTx.filter((t) => t.category_id).map((t) => t.category_id as string))]
-
   const catGroupMap: Record<string, string> = {}
-  if (categoryIdsInTx.length > 0) {
-    const { data: cats } = await supabase
-      .from('categories')
-      .select('id, group_id')
-      .in('id', categoryIdsInTx)
-    for (const c of cats ?? []) {
-      catGroupMap[c.id] = c.group_id
-    }
+  for (const c of catGroupRes.data ?? []) {
+    catGroupMap[c.id] = c.group_id
   }
 
   const groupsWithIdeal = groupsRes.data ?? []

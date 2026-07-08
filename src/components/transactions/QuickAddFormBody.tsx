@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { useBudgetStore } from "@/stores/budget.store";
+import { useRefreshStore } from "@/stores/refresh.store";
 import type { AccountWithBalance } from "@/types/account";
 import type { CategoryGroupWithCategories } from "@/types/category";
 import type { CreateTransactionInput } from "@/types/transaction";
@@ -25,6 +26,7 @@ const TYPE_LABELS: Record<TxType, string> = {
 export function QuickAddFormBody({ onClose }: Props) {
   const router = useRouter();
   const { markStale } = useBudgetStore();
+  const { bumpTransactions } = useRefreshStore();
 
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [groups, setGroups] = useState<CategoryGroupWithCategories[]>([]);
@@ -104,6 +106,14 @@ export function QuickAddFormBody({ onClose }: Props) {
   const selectedAccount = accounts.find((a) => a.id === accountId);
   const isOnBudget = selectedAccount ? !selectedAccount.is_tracking_only : true;
   const userGroups = groups.filter((g) => !g.is_system);
+  const categorySections = userGroups
+    .map((g) => ({
+      label: g.name,
+      options: g.categories
+        .filter((c) => !c.is_system && !c.is_archived)
+        .map((c) => ({ value: c.id, label: c.name })),
+    }))
+    .filter((s) => s.options.length > 0);
 
   // A transfer into a credit card is always a card payment — auto-assign and
   // lock its "Pago · X" system category, there's no legitimate use case for a
@@ -198,6 +208,7 @@ export function QuickAddFormBody({ onClose }: Props) {
       } else {
         // Mark budget stale so BudgetClient refetches if it's open
         markStale(date.slice(0, 7));
+        bumpTransactions();
         router.refresh();
         onClose();
       }
@@ -350,11 +361,8 @@ export function QuickAddFormBody({ onClose }: Props) {
             value={categoryId}
             onChange={setCategoryId}
             placeholder={type === "income" ? "Dinero a Asignar" : "Seleccionar categoría"}
-            options={userGroups.flatMap((g) =>
-              g.categories
-                .filter((c) => !c.is_system && !c.is_archived)
-                .map((c) => ({ value: c.id, label: c.name, sub: g.name }))
-            )}
+            sections={categorySections}
+            searchable
           />
         </div>
       )}

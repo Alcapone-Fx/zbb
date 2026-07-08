@@ -6,6 +6,7 @@ import type { TransactionWithDetails, UpdateTransactionInput } from "@/types/tra
 import type { CategoryGroupWithCategories } from "@/types/category";
 import type { AccountWithBalance } from "@/types/account";
 import { AppSelect } from "@/components/ui/AppSelect";
+import { useRefreshStore } from "@/stores/refresh.store";
 
 interface Props {
   tx: TransactionWithDetails | null;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function EditTransactionSheet({ tx, groups, accounts, onClose, onSaved }: Props) {
+  const { bumpTransactions } = useRefreshStore();
   const [date, setDate] = useState(tx?.date ?? "");
   const [accountId, setAccountId] = useState(tx?.account_id ?? "");
   const [amount, setAmount] = useState(tx ? String(Math.abs(tx.amount)) : "");
@@ -33,6 +35,14 @@ export function EditTransactionSheet({ tx, groups, accounts, onClose, onSaved }:
   const isIncome = tx.type === "income";
 
   const userGroups = groups.filter((g) => !g.is_system);
+  const categorySections = userGroups
+    .map((g) => ({
+      label: g.name,
+      options: g.categories
+        .filter((c) => !c.is_system && !c.is_archived)
+        .map((c) => ({ value: c.id, label: c.name })),
+    }))
+    .filter((s) => s.options.length > 0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -72,6 +82,7 @@ export function EditTransactionSheet({ tx, groups, accounts, onClose, onSaved }:
       if (!res.ok) {
         setError(json.error ?? "Error al guardar");
       } else {
+        bumpTransactions();
         onSaved();
         onClose();
       }
@@ -240,11 +251,8 @@ export function EditTransactionSheet({ tx, groups, accounts, onClose, onSaved }:
                 value={categoryId}
                 onChange={setCategoryId}
                 placeholder="Sin categoría"
-                options={userGroups.flatMap((g) =>
-                  g.categories
-                    .filter((c) => !c.is_system && !c.is_archived)
-                    .map((c) => ({ value: c.id, label: c.name, sub: g.name }))
-                )}
+                sections={categorySections}
+                searchable
               />
             </div>
           )}
