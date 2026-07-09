@@ -78,6 +78,7 @@ export interface WishlistItem {
   notes: string | null
   created_at: string
   converted_to_fund_id: string | null
+  display_order: number
 }
 
 export const createWishlistItemSchema = z.object({
@@ -89,6 +90,10 @@ export const createWishlistItemSchema = z.object({
 
 export const updateWishlistItemSchema = createWishlistItemSchema.partial().extend({
   converted_to_fund_id: z.string().uuid().nullable().optional(),
+})
+
+export const reorderWishlistSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1),
 })
 
 export type CreateWishlistItemInput = z.infer<typeof createWishlistItemSchema>

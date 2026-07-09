@@ -5,6 +5,7 @@ import {
   transactionFiltersSchema,
 } from '@/types/transaction'
 import type { TransactionWithDetails } from '@/types/transaction'
+import type { AccountType } from '@/types/account'
 import {
   applyAmountSign,
   transferLegAmounts,
@@ -161,7 +162,7 @@ export async function POST(req: Request) {
 
     const { data: destAccount } = await supabase
       .from('accounts')
-      .select('id, is_tracking_only')
+      .select('id, type, is_tracking_only')
       .eq('id', transfer_to_account_id)
       .eq('user_id', user.id)
       .single()
@@ -178,7 +179,11 @@ export async function POST(req: Request) {
       )
     }
 
-    const { sourceLegAmount, destLegAmount } = transferLegAmounts(amount)
+    const { sourceLegAmount, destLegAmount } = transferLegAmounts(
+      amount,
+      account.type as AccountType,
+      destAccount.type as AccountType
+    )
 
     // Insert leg 1 (source) without pair_id yet
     const { data: leg1, error: leg1Err } = await supabase

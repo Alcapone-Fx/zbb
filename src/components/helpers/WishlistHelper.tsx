@@ -1,20 +1,25 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
 import type { WishlistItem, WishlistPriority } from '@/types/helpers'
 import { AppSelect } from '@/components/ui/AppSelect'
 import { ConfirmSheet } from '@/components/shared/ConfirmSheet'
-
-const PRIORITY_LABEL: Record<WishlistPriority, string> = {
-  high: 'Alta',
-  medium: 'Media',
-  low: 'Baja',
-}
-const PRIORITY_COLOR: Record<WishlistPriority, string> = {
-  high: '#ef4444',
-  medium: '#eab308',
-  low: '#6b7280',
-}
+import { SortableWishlistItem } from './SortableWishlistItem'
 
 interface FormState {
   name: string
@@ -155,6 +160,26 @@ export function WishlistHelper({ onConvert }: Props) {
   const activeItems = items.filter((i) => !i.converted_to_fund_id)
   const convertedItems = items.filter((i) => i.converted_to_fund_id)
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIdx = activeItems.findIndex((i) => i.id === active.id)
+    const newIdx = activeItems.findIndex((i) => i.id === over.id)
+    const reordered = arrayMove(activeItems, oldIdx, newIdx)
+    setItems([...reordered, ...convertedItems])
+    fetch('/api/helpers/wishlist/reorder', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: reordered.map((i) => i.id) }),
+    }).catch(() => {})
+  }
+
   if (loading) {
     return <div className="py-10 text-center text-sm" style={{ color: 'var(--text-sub)' }}>Cargando…</div>
   }
@@ -266,69 +291,21 @@ export function WishlistHelper({ onConvert }: Props) {
         </div>
       )}
 
-      <div className="space-y-2">
-        {activeItems.map((item) => (
-          <div
-            key={item.id}
-            className="rounded-xl p-4"
-            style={{ background: 'var(--bg-card)' }}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium" style={{ color: 'var(--text-main)' }}>
-                    {item.name}
-                  </span>
-                  {item.priority && (
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={{
-                        color: PRIORITY_COLOR[item.priority],
-                        background: `${PRIORITY_COLOR[item.priority]}22`,
-                      }}
-                    >
-                      {PRIORITY_LABEL[item.priority]}
-                    </span>
-                  )}
-                </div>
-                {item.estimated_cost != null && (
-                  <p className="text-sm mt-0.5 font-semibold" style={{ color: 'var(--ac)' }}>
-                    ${item.estimated_cost.toLocaleString('es', { minimumFractionDigits: 2 })}
-                  </p>
-                )}
-                {item.notes && (
-                  <p className="text-xs mt-1 truncate" style={{ color: 'var(--text-sub)' }}>
-                    {item.notes}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => onConvert(item)}
-                className="flex-1 text-xs px-3 py-1.5 rounded-lg font-semibold"
-                style={{ background: 'var(--ab)', color: 'var(--ac)' }}
-              >
-                Convertir en Fondo de Ahorro
-              </button>
-              <button
-                onClick={() => openEdit(item)}
-                className="text-xs px-3 py-1.5 rounded-lg"
-                style={{ background: 'var(--bg-app)', color: 'var(--text-sub)' }}
-              >
-                Editar
-              </button>
-              <button
-                onClick={() => handleDelete(item)}
-                className="text-xs px-3 py-1.5 rounded-lg text-red-500"
-                style={{ background: 'rgba(239,68,68,0.1)' }}
-              >
-                Eliminar
-              </button>
-            </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={activeItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2">
+            {activeItems.map((item) => (
+              <SortableWishlistItem
+                key={item.id}
+                item={item}
+                onConvert={onConvert}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+              />
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       {convertedItems.length > 0 && (
         <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-card)' }}>

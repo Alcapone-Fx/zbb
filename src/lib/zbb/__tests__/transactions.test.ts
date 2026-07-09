@@ -21,20 +21,35 @@ describe('applyAmountSign', () => {
 })
 
 describe('transferLegAmounts', () => {
-  it('source is negative, destination is positive', () => {
-    const { sourceLegAmount, destLegAmount } = transferLegAmounts(100)
+  it('normal accounts: source is negative, destination is positive', () => {
+    const { sourceLegAmount, destLegAmount } = transferLegAmounts(100, 'checking', 'savings')
     expect(sourceLegAmount).toBe(-100)
     expect(destLegAmount).toBe(100)
   })
   it('handles already-negative user input', () => {
-    const { sourceLegAmount, destLegAmount } = transferLegAmounts(-75)
+    const { sourceLegAmount, destLegAmount } = transferLegAmounts(-75, 'checking', 'savings')
     expect(sourceLegAmount).toBe(-75)
     expect(destLegAmount).toBe(75)
   })
   it('decimal amounts preserved', () => {
-    const { sourceLegAmount, destLegAmount } = transferLegAmounts(1234.56)
+    const { sourceLegAmount, destLegAmount } = transferLegAmounts(1234.56, 'checking', 'savings')
     expect(sourceLegAmount).toBe(-1234.56)
     expect(destLegAmount).toBe(1234.56)
+  })
+  it('paying down a liability: destination leg is negative (reduces amount owed)', () => {
+    const { sourceLegAmount, destLegAmount } = transferLegAmounts(500, 'savings', 'liability')
+    expect(sourceLegAmount).toBe(-500)
+    expect(destLegAmount).toBe(-500)
+  })
+  it('drawing from a liability: source leg is positive (increases amount owed)', () => {
+    const { sourceLegAmount, destLegAmount } = transferLegAmounts(500, 'liability', 'checking')
+    expect(sourceLegAmount).toBe(500)
+    expect(destLegAmount).toBe(500)
+  })
+  it('transfer between two liabilities: source (drawn from) goes up, destination (paid down) goes down', () => {
+    const { sourceLegAmount, destLegAmount } = transferLegAmounts(200, 'liability', 'liability')
+    expect(sourceLegAmount).toBe(200)
+    expect(destLegAmount).toBe(-200)
   })
 })
 

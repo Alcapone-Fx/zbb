@@ -11,9 +11,9 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('wishlist_items')
-    .select('id, user_id, name, estimated_cost, priority, notes, created_at, converted_to_fund_id')
+    .select('id, user_id, name, estimated_cost, priority, notes, created_at, converted_to_fund_id, display_order')
     .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+    .order('display_order', { ascending: true })
 
   if (error) {
     console.error('GET /api/helpers/wishlist error', error)
@@ -49,6 +49,15 @@ export async function POST(req: Request) {
 
   const { name, estimated_cost, priority, notes } = parsed.data
 
+  const { data: existing } = await supabase
+    .from('wishlist_items')
+    .select('display_order')
+    .eq('user_id', user.id)
+    .order('display_order', { ascending: false })
+    .limit(1)
+
+  const nextOrder = existing && existing.length > 0 ? existing[0].display_order + 1 : 0
+
   const { data: item, error: insertErr } = await supabase
     .from('wishlist_items')
     .insert({
@@ -57,8 +66,9 @@ export async function POST(req: Request) {
       estimated_cost: estimated_cost ?? null,
       priority: priority ?? null,
       notes: notes ?? null,
+      display_order: nextOrder,
     })
-    .select('id, user_id, name, estimated_cost, priority, notes, created_at, converted_to_fund_id')
+    .select('id, user_id, name, estimated_cost, priority, notes, created_at, converted_to_fund_id, display_order')
     .single()
 
   if (insertErr || !item) {
