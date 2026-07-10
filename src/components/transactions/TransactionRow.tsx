@@ -52,6 +52,10 @@ export function TransactionRow({ tx, onEdit, onDelete }: Props) {
           {title}
         </p>
         <p className="text-xs truncate" style={{ color: "var(--text-sub)" }}>
+          {tx.category_name && (
+            <span style={{ color: "var(--text-main)" }}>{tx.category_name}</span>
+          )}
+          {tx.category_name ? " · " : ""}
           {tx.account_name}
           {tx.memo && tx.payee ? ` · ${tx.memo}` : ""}
         </p>
