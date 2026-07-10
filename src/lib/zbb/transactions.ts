@@ -35,11 +35,3 @@ export function transferLegAmounts(
     destLegAmount: destType === 'liability' ? -abs : abs,
   }
 }
-
-/**
- * Returns the amount for the CC mirror adjustment transaction.
- * Always positive — represents the budget item for the future CC payment.
- */
-export function ccMirrorAmount(expenseAmount: number): number {
-  return Math.abs(expenseAmount)
-}

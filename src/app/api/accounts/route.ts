@@ -20,7 +20,7 @@ export async function GET() {
       .order('created_at', { ascending: true }),
     supabase
       .from('transactions')
-      .select('account_id, category_id, amount')
+      .select('account_id, category_id, amount, type')
       .eq('user_id', user.id),
     supabase
       .from('categories')

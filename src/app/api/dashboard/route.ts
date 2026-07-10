@@ -76,7 +76,7 @@ export async function GET(req: Request) {
   const [allTxRes, ccCategoriesRes, catGroupRes] = await Promise.all([
     supabase
       .from('transactions')
-      .select('account_id, category_id, amount')
+      .select('account_id, category_id, amount, type')
       .eq('user_id', user.id),
     supabase
       .from('categories')
@@ -126,10 +126,15 @@ export async function GET(req: Request) {
 
   for (const tx of periodTx) {
     const amount = Number(tx.amount)
+    // A CC "Pago · X" mirror is type='adjustment' with amount > 0 too, but it's
+    // synthetic bookkeeping, not real income — every card purchase would
+    // otherwise inflate this KPI. See sumBalancesByAccount for the same
+    // distinction applied to account balances.
+    const isCcMirror = Boolean(tx.category_id && ccMirrorCategoryIds.has(tx.category_id))
     const countsAsIncome =
       tx.type === 'income' ||
       tx.type === 'opening_balance' ||
-      (tx.type === 'adjustment' && amount > 0)
+      (tx.type === 'adjustment' && amount > 0 && !isCcMirror)
     if (countsAsIncome) {
       net_income += amount
     } else if (tx.type === 'expense') {

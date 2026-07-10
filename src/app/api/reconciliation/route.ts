@@ -66,14 +66,17 @@ export async function POST(req: Request) {
 
   if (!account) return NextResponse.json({ error: 'Cuenta no encontrada' }, { status: 404 })
 
-  // Compute app_balance = sum of all transactions up to date, excluding CC
-  // "Pago · X" mirror transactions (see sumBalancesByAccount) — those always
-  // cancel out the real expense on this same account and would otherwise make
-  // a credit card's app_balance look artificially near-zero during reconciliation.
+  // Compute app_balance = sum of all transactions up to date, excluding the
+  // synthetic CC "Pago · X" mirror transactions (see sumBalancesByAccount) —
+  // those always cancel out the real expense on this same account and would
+  // otherwise make a credit card's app_balance look artificially near-zero
+  // during reconciliation. Only type='adjustment' mirrors are excluded — a
+  // real transfer that pays off a card is deliberately tagged with the same
+  // category and must still count toward this account's balance.
   const [{ data: txData, error: txErr }, { data: ccCategories }] = await Promise.all([
     supabase
       .from('transactions')
-      .select('category_id, amount')
+      .select('category_id, amount, type')
       .eq('account_id', account_id)
       .eq('user_id', user.id)
       .lte('date', date),
@@ -93,7 +96,7 @@ export async function POST(req: Request) {
   const app_balance =
     Math.round(
       (txData ?? [])
-        .filter((tx) => !(tx.category_id && ccMirrorCategoryIds.has(tx.category_id)))
+        .filter((tx) => !(tx.type === 'adjustment' && tx.category_id && ccMirrorCategoryIds.has(tx.category_id)))
         .reduce((sum, tx) => sum + Number(tx.amount), 0) * 100
     ) / 100
 

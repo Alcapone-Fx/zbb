@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  applyAmountSign,
-  transferLegAmounts,
-  ccMirrorAmount,
-} from '../transactions'
+import { applyAmountSign, transferLegAmounts } from '../transactions'
 
 describe('applyAmountSign', () => {
   it('expense returns negative amount', () => {
@@ -50,17 +46,5 @@ describe('transferLegAmounts', () => {
     const { sourceLegAmount, destLegAmount } = transferLegAmounts(200, 'liability', 'liability')
     expect(sourceLegAmount).toBe(200)
     expect(destLegAmount).toBe(-200)
-  })
-})
-
-describe('ccMirrorAmount', () => {
-  it('returns positive for a negative expense stored amount', () => {
-    expect(ccMirrorAmount(-50)).toBe(50)
-  })
-  it('returns positive unchanged for positive input', () => {
-    expect(ccMirrorAmount(30)).toBe(30)
-  })
-  it('works with zero', () => {
-    expect(ccMirrorAmount(0)).toBe(0)
   })
 })

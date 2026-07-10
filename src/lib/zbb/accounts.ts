@@ -24,15 +24,22 @@ export interface BalanceTransaction {
   account_id: string
   category_id: string | null
   amount: number
+  type: string
 }
 
 /**
- * Sums transaction amounts per account_id, excluding transactions tagged with
- * a CC-payment "mirror" category (categories.linked_account_id set). Those
- * mirrors exist purely to track "Pago · X" budget activity, always share the
- * SAME account_id as the real expense they mirror, and have the opposite
- * sign — left in, they'd cancel the real expense out and the account's
- * balance would never reflect actual credit card debt.
+ * Sums transaction amounts per account_id, excluding the synthetic CC-payment
+ * "mirror" rows (type = 'adjustment', tagged with a category whose
+ * categories.linked_account_id is set). Those mirrors always share the SAME
+ * account_id as the real expense they mirror and have the opposite sign —
+ * left in, they'd cancel the real expense out and the account's balance
+ * would never reflect actual credit card debt.
+ *
+ * The `type === 'adjustment'` check is required, not just the category match:
+ * a real transfer that pays off a credit card is deliberately categorized
+ * under that same "Pago · X" category (see QuickAddFormBody's auto-assigned
+ * ccPaymentCategory), and excluding it by category alone would silently drop
+ * a legitimate debit/credit from its account's balance.
  */
 export function sumBalancesByAccount(
   transactions: BalanceTransaction[],
@@ -40,7 +47,7 @@ export function sumBalancesByAccount(
 ): Record<string, number> {
   const balanceMap: Record<string, number> = {}
   for (const t of transactions) {
-    if (t.category_id && ccMirrorCategoryIds.has(t.category_id)) continue
+    if (t.type === 'adjustment' && t.category_id && ccMirrorCategoryIds.has(t.category_id)) continue
     balanceMap[t.account_id] = (balanceMap[t.account_id] ?? 0) + Number(t.amount)
   }
   return balanceMap

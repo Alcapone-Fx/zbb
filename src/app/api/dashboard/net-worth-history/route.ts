@@ -49,7 +49,7 @@ export async function GET() {
 
     supabase
       .from('transactions')
-      .select('account_id, category_id, amount, date')
+      .select('account_id, category_id, amount, date, type')
       .eq('user_id', user.id)
       .lte('date', cutoff),
 
@@ -72,7 +72,10 @@ export async function GET() {
   const points: NetWorthPoint[] = months.map(({ ym, lastDay, label }) => {
     const balanceMap: Record<string, number> = {}
     for (const tx of allTx) {
-      if (tx.category_id && ccMirrorCategoryIds.has(tx.category_id)) continue
+      // Only the synthetic CC "Pago · X" mirror (type='adjustment') is excluded —
+      // a real transfer that pays off a card is deliberately tagged with the
+      // same category and must still count toward its own account's balance.
+      if (tx.type === 'adjustment' && tx.category_id && ccMirrorCategoryIds.has(tx.category_id)) continue
       if (tx.date <= lastDay) {
         balanceMap[tx.account_id] = (balanceMap[tx.account_id] ?? 0) + Number(tx.amount)
       }

@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { ccMirrorAmount } from '@/lib/zbb/transactions'
-import { buildCreditCardCategoryName } from '@/lib/zbb/accounts'
 import { advanceNextDueDate } from '@/lib/zbb/scheduled'
 import { confirmScheduledTransactionSchema } from '@/types/scheduled-transaction'
 
@@ -34,7 +32,7 @@ export async function POST(
   // Fetch scheduled transaction
   const { data: scheduled } = await supabase
     .from('scheduled_transactions')
-    .select('*, accounts!inner(name, type, is_tracking_only)')
+    .select('*')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
@@ -87,45 +85,6 @@ export async function POST(
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
-  // CC mirror for expense on credit card
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const account = scheduled.accounts as any
-  let mirror = null
-  if (txType === 'expense' && account?.type === 'credit_card') {
-    const ccCategoryName = buildCreditCardCategoryName(account.name)
-    const { data: ccCategory } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('is_system', true)
-      .eq('name', ccCategoryName)
-      .single()
-
-    if (ccCategory) {
-      const { data: mirrorTx, error: mirrorErr } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          account_id: scheduled.account_id,
-          category_id: ccCategory.id,
-          amount: ccMirrorAmount(signedAmount),
-          date: txDate,
-          type: 'adjustment',
-          memo: `Pago tarjeta (automático) — ${scheduled.payee || 'gasto'}`,
-          tags: [],
-          next_month: false,
-        })
-        .select()
-        .single()
-
-      if (mirrorErr) {
-        console.error('POST confirm: CC mirror error', mirrorErr)
-      } else {
-        mirror = mirrorTx
-      }
-    }
-  }
-
   // Advance next_due_date
   const nextDue = advanceNextDueDate(scheduled.frequency, scheduled.next_due_date)
   const isExpired = scheduled.end_date && nextDue > scheduled.end_date
@@ -144,7 +103,7 @@ export async function POST(
   }
 
   return NextResponse.json(
-    { data: { transaction, ...(mirror ? { mirror } : {}) } },
+    { data: { transaction } },
     { status: 201 }
   )
 }

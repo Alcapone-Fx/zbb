@@ -94,30 +94,45 @@ describe('computeNetWorth', () => {
 describe('sumBalancesByAccount', () => {
   it('sums plain transactions per account', () => {
     const txs = [
-      { account_id: 'a', category_id: null, amount: -50 },
-      { account_id: 'a', category_id: null, amount: 100 },
-      { account_id: 'b', category_id: null, amount: 20 },
+      { account_id: 'a', category_id: null, amount: -50, type: 'expense' },
+      { account_id: 'a', category_id: null, amount: 100, type: 'income' },
+      { account_id: 'b', category_id: null, amount: 20, type: 'income' },
     ]
     expect(sumBalancesByAccount(txs, new Set())).toEqual({ a: 50, b: 20 })
   })
 
-  it('excludes transactions tagged with a CC-mirror category', () => {
+  it('excludes the synthetic CC-mirror adjustment on the card account', () => {
     const txs = [
-      { account_id: 'card', category_id: 'groceries', amount: -50 }, // real expense
-      { account_id: 'card', category_id: 'cc-payment-cat', amount: 50 }, // mirror
+      { account_id: 'card', category_id: 'groceries', amount: -50, type: 'expense' }, // real expense
+      { account_id: 'card', category_id: 'cc-payment-cat', amount: 50, type: 'adjustment' }, // mirror
     ]
     expect(sumBalancesByAccount(txs, new Set(['cc-payment-cat']))).toEqual({ card: -50 })
   })
 
   it('does not exclude reconciliation adjustments (different category)', () => {
     const txs = [
-      { account_id: 'checking', category_id: 'misc', amount: -12.5 },
+      { account_id: 'checking', category_id: 'misc', amount: -12.5, type: 'adjustment' },
     ]
     expect(sumBalancesByAccount(txs, new Set(['cc-payment-cat']))).toEqual({ checking: -12.5 })
   })
 
+  it('regression: a real transfer that pays off a card is NOT excluded, even though it shares the CC-mirror category', () => {
+    // Paying a credit card is a transfer whose source leg (checking) is
+    // deliberately tagged with the card's "Pago · X" category. It must still
+    // count toward checking's balance — only the same-account synthetic
+    // mirror (type='adjustment') should ever be excluded.
+    const txs = [
+      { account_id: 'checking', category_id: 'cc-payment-cat', amount: -50, type: 'transfer' }, // real payment, source leg
+      { account_id: 'card', category_id: null, amount: 50, type: 'transfer' }, // real payment, dest leg
+    ]
+    expect(sumBalancesByAccount(txs, new Set(['cc-payment-cat']))).toEqual({
+      checking: -50,
+      card: 50,
+    })
+  })
+
   it('handles null category_id safely', () => {
-    const txs = [{ account_id: 'a', category_id: null, amount: 10 }]
+    const txs = [{ account_id: 'a', category_id: null, amount: 10, type: 'income' }]
     expect(sumBalancesByAccount(txs, new Set(['x']))).toEqual({ a: 10 })
   })
 

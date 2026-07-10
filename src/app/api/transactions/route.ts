@@ -6,12 +6,7 @@ import {
 } from '@/types/transaction'
 import type { TransactionWithDetails } from '@/types/transaction'
 import type { AccountType } from '@/types/account'
-import {
-  applyAmountSign,
-  transferLegAmounts,
-  ccMirrorAmount,
-} from '@/lib/zbb/transactions'
-import { buildCreditCardCategoryName } from '@/lib/zbb/accounts'
+import { applyAmountSign, transferLegAmounts } from '@/lib/zbb/transactions'
 
 export async function GET(req: Request) {
   const supabase = await createClient()
@@ -272,50 +267,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
-  // --- CC mirror (expense on credit_card account) ---
-  let mirror = null
-  if (type === 'expense' && account.type === 'credit_card') {
-    const ccCategoryName = buildCreditCardCategoryName(account.name)
-    const { data: ccCategory } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('is_system', true)
-      .eq('name', ccCategoryName)
-      .single()
-
-    if (ccCategory) {
-      const { data: mirrorTx, error: mirrorErr } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          account_id,
-          category_id: ccCategory.id,
-          amount: ccMirrorAmount(signedAmount),
-          date,
-          type: 'adjustment',
-          memo: `Pago tarjeta (automático) — ${payee || 'gasto'}`,
-          tags: [],
-          next_month: false,
-        })
-        .select()
-        .single()
-
-      if (mirrorErr) {
-        console.error('POST /api/transactions CC mirror error', mirrorErr)
-      } else {
-        mirror = mirrorTx
-      }
-    } else {
-      console.warn(
-        'POST /api/transactions: CC system category not found for account',
-        account.name
-      )
-    }
-  }
-
   return NextResponse.json(
-    { data: { transaction, ...(mirror ? { mirror } : {}) } },
+    { data: { transaction } },
     { status: 201 }
   )
 }

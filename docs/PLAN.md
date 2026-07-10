@@ -310,11 +310,47 @@
 - **Depends on:** M03, M04
 - **Worktree:** wt-m05-transactions
 - **web:** ✅ Quick Add form (FAB), transaction history view grouped by category, filters (date range / category / type / tags / account), edit transaction sheet, delete transaction (with transfer-pair handling), CSV export, payee autocomplete
-- **db:** ✅ Route Handlers: GET+POST `/api/transactions`, PATCH+DELETE `/api/transactions/[id]`, GET `/api/transactions/export`, GET `/api/transactions/payees`; CC mirror transaction logic; transfer pair creation/sync/deletion logic
-- **Tests:** ✅ 9 unit tests (`applyAmountSign` × 4, `transferLegAmounts` × 3, `ccMirrorAmount` × 3) — vitest v4 blocked by Windows Application Control policy (native rolldown binary); tests authored and verified by type-check + build
-- **Migrations:** — (schema in M00)
+- **db:** ✅ Route Handlers: GET+POST `/api/transactions`, PATCH+DELETE `/api/transactions/[id]`, GET `/api/transactions/export`, GET `/api/transactions/payees`; transfer pair creation/sync/deletion logic. CC mirror transaction logic **removed 2026-07-10** — see AI Notes below.
+- **Tests:** ✅ 7 unit tests (`applyAmountSign` × 4, `transferLegAmounts` × 3) — `ccMirrorAmount` and its 3 tests removed 2026-07-10 along with the mirror-creation code. Vitest v4 blocked by Windows Application Control policy (native rolldown binary); tests authored and verified by type-check + build
+- **Migrations:** ⏳ pending — `supabase/migrations/20260710000001_remove_cc_mirror_transactions.sql` (data repair, deletes historical mirror rows; schema itself is in M00)
 
 #### AI Notes
+> **CC mirror transaction removed (2026-07-10, user-reported bug):** The original design (below, kept for
+> history) auto-inserted a synthetic `adjustment` transaction on every credit-card expense, on the SAME
+> account as the real expense, so the account's raw transaction list would show one extra entry with no
+> counterpart in the user's real bank statement. Worse, the exclusion meant to keep it out of balance math
+> (`sumBalancesByAccount`) matched **by `category_id` alone** — and a *real* transfer that pays off a card
+> is deliberately auto-tagged with that same "Pago · X" category (`QuickAddFormBody`'s `ccPaymentCategory`
+> lock). That real transfer's source leg (e.g. checking) was therefore *also* silently excluded from its
+> own account's balance, making the checking account's app balance look permanently higher than the real
+> bank by the sum of every card payment ever made. Root cause confirmed by the user: "mi cuenta planillera
+> tiene más dinero que mi cuenta de banco... exactamente el mismo monto que he pagado con tarjeta."
+>
+> Investigation showed the stored mirror row was never actually read anywhere: `budget/month/route.ts`
+> already recomputes "Pago · X" category activity synthetically from the linked account's real
+> expense/transfer transactions (`ccAcctMap`), not from the stored mirror amount. So the fix removes mirror
+> creation entirely (`POST /api/transactions`, `POST /api/scheduled-transactions/[id]/confirm`) rather than
+> patching around it.
+>
+> **Fix — exclusion now requires `type === 'adjustment'`, not category alone:** `sumBalancesByAccount`
+> (`src/lib/zbb/accounts.ts`), the inline balance loop in `dashboard/net-worth-history/route.ts`, and the
+> `app_balance` filter in `reconciliation/route.ts` all now require `tx.type === 'adjustment'` *and* a
+> CC-mirror category before excluding — never excluding a same-category transaction of a different type
+> (e.g. the real payment transfer). `BalanceTransaction` gained a required `type` field; every caller's
+> `.select()` was updated to fetch it.
+>
+> **Second bug found and fixed in the same investigation:** `dashboard/route.ts`'s `net_income` KPI counted
+> `type === 'adjustment' && amount > 0` as income with no CC-mirror exclusion at all (unlike
+> `budget/month/route.ts`, which already had the correct `!isCcMirror` guard) — every credit card purchase
+> was inflating the Dashboard's "Ingresos" figure. Same guard added here.
+>
+> **Historical cleanup:** `20260710000001_remove_cc_mirror_transactions.sql` (pending) deletes the
+> already-stored synthetic mirror rows precisely — `type='adjustment' AND account_id = (that row's own
+> category's linked_account_id)` plus the exact auto-generated memo prefix as a second guard — so it can
+> never delete a real transaction that merely shares the "Pago · X" category on a different account.
+>
+> ---
+>
 > **Quick Add form fields** (PRD §5.1.1): date, type, account, amount, category, payee (optional),
 > tags (optional, multiple), memo (optional), next_month checkbox (income only).
 >
@@ -693,3 +729,4 @@
 | `20260708000001_user_settings_spend_calculators.sql` | grocery/recurring calculator settings | main session | ⏳ PENDING |
 | `20260709000001_wishlist_display_order.sql` | display_order on wishlist_items | main session | ⏳ PENDING |
 | `20260709000002_account_primary_flag.sql` | is_primary flag on accounts (GitHub #16) | main session | ⏳ PENDING |
+| `20260710000001_remove_cc_mirror_transactions.sql` | deletes historical CC "Pago · X" mirror transactions (balance-inflation bug fix) | main session | ⏳ PENDING |
