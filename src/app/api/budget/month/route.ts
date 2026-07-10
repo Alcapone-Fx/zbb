@@ -79,7 +79,7 @@ export async function GET(req: Request) {
 
     supabase
       .from('accounts')
-      .select('id')
+      .select('id, is_primary')
       .eq('user_id', user.id)
       .eq('is_tracking_only', false)
       .eq('is_archived', false),
@@ -101,6 +101,7 @@ export async function GET(req: Request) {
   const allCats = catsRes.data ?? []
   const categoryIds = allCats.map((c) => c.id)
   const onBudgetIds = (accountsRes.data ?? []).map((a) => a.id)
+  const primaryAccountId = (accountsRes.data ?? []).find((a) => a.is_primary)?.id ?? null
 
   // CC "Pago · X" categories get their activity computed synthetically below
   // (from the linked account's real expense/transfer net) — the literal mirror
@@ -148,9 +149,14 @@ export async function GET(req: Request) {
 
   // Build activity map: month -> catId -> signed sum (for disponible computation)
   const activitiesMap: Record<string, Record<string, number>> = {}
-  // Income sums for Dinero a Asignar
+  // Income sums for Dinero a Asignar (global, all on-budget accounts)
   let incomeThisMonth = 0
   let incomeLastMonthNextFlag = 0
+  // Same income sums, scoped only to the primary account — powers /accounts'
+  // "Disponible para ahorrar/invertir" (income into that specific account,
+  // not the whole on-budget universe; see CONVENTIONS.md 2026-07-10 entry)
+  let incomeThisMonthPrimary = 0
+  let incomeLastMonthNextFlagPrimary = 0
 
   for (const tx of allTx) {
     const txMonth = tx.date.slice(0, 7) // YYYY-MM
@@ -182,8 +188,10 @@ export async function GET(req: Request) {
     if (countsAsIncome) {
       if (txMonth === targetMonth && !tx.next_month) {
         incomeThisMonth += amount
+        if (tx.account_id === primaryAccountId) incomeThisMonthPrimary += amount
       } else if (txMonth === prevMonth && tx.next_month) {
         incomeLastMonthNextFlag += amount
+        if (tx.account_id === primaryAccountId) incomeLastMonthNextFlagPrimary += amount
       }
     }
   }
@@ -233,6 +241,20 @@ export async function GET(req: Request) {
     if (d < 0) negativeRolloverPrevMonth += d
   }
 
+  const targetDisponibles = allDisponibles[targetMonth] ?? {}
+
+  // Negative Disponible for the TARGET month itself — used only by
+  // primaryAccountAvailable below, not by the global dineroAAsignar. Since
+  // computeDisponibles recurses (disponible(M) = assigned(M) + disponible(M-1)
+  // + activity(M)), this already subsumes any prior months' unresolved
+  // overspending, so it must replace — not add to — negativeRolloverPrevMonth
+  // or that carried-forward deficit would be double-counted.
+  let negativeThisMonth = 0
+  for (const catId of categoryIds) {
+    const d = targetDisponibles[catId] ?? 0
+    if (d < 0) negativeThisMonth += d
+  }
+
   // Total allocated this month
   const totalAllocatedThisMonth = Object.values(
     allocationsMap[targetMonth] ?? {}
@@ -245,8 +267,23 @@ export async function GET(req: Request) {
     negativeRolloverPrevMonth,
   })
 
+  // Same formula, but income scoped to the primary account only — total
+  // allocated stays global (there's no per-account attribution for budget
+  // allocations). Unlike dineroAAsignar, this uses negativeThisMonth (not
+  // negativeRolloverPrevMonth) so an overspent category dents "Disponible
+  // para ahorrar/invertir" immediately instead of one month later — the
+  // user explicitly asked for this to be real-time, unlike the global KPI.
+  // Null when no account is marked primary.
+  const primaryAccountAvailable = primaryAccountId
+    ? computeDineroAAsignar({
+        incomeThisMonth: incomeThisMonthPrimary,
+        incomeLastMonthNextFlag: incomeLastMonthNextFlagPrimary,
+        totalAllocatedThisMonth,
+        negativeRolloverPrevMonth: negativeThisMonth,
+      })
+    : null
+
   // Build response groups
-  const targetDisponibles = allDisponibles[targetMonth] ?? {}
   const targetAllocations = allocationsMap[targetMonth] ?? {}
   const targetActivities = activitiesMap[targetMonth] ?? {}
 
@@ -276,6 +313,7 @@ export async function GET(req: Request) {
   const responseData: BudgetMonthData = {
     month: targetMonth,
     dineroAAsignar,
+    primaryAccountAvailable,
     groups,
   }
 

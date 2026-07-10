@@ -34,6 +34,7 @@ export interface BudgetGroupRow {
 export interface BudgetMonthData {
   month: string
   dineroAAsignar: number
+  primaryAccountAvailable: number | null
   groups: BudgetGroupRow[]
 }
 

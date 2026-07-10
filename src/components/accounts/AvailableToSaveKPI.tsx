@@ -33,7 +33,8 @@ export function AvailableToSaveKPI({ amount, primaryAccountName }: Props) {
         <MaskedAmount value={formatCurrency(amount)} style={{ color }} />
       </p>
       <p className="text-[10px] mt-0.5" style={{ color: "var(--text-sub)" }}>
-        Desde {primaryAccountName} — lo que aún no has asignado a ninguna categoría del presupuesto.
+        Ingresos de {primaryAccountName} este mes menos todo lo asignado a tus categorías. Es una
+        proyección: puede variar si gastas más de lo previsto.
       </p>
     </div>
   );

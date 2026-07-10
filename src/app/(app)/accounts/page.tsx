@@ -45,7 +45,7 @@ function computeMiniStats(data: AccountsResponse) {
 export default function AccountsPage() {
   const transactionsVersion = useRefreshStore((s) => s.transactionsVersion);
   const [data, setData] = useState<AccountsResponse | null>(null);
-  const [dineroAAsignar, setDineroAAsignar] = useState<number | null>(null);
+  const [primaryAvailable, setPrimaryAvailable] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -70,7 +70,7 @@ export default function AccountsPage() {
       }
       if (budgetRes.ok) {
         const budgetJson = await budgetRes.json();
-        setDineroAAsignar(budgetJson.data?.dineroAAsignar ?? null);
+        setPrimaryAvailable(budgetJson.data?.primaryAccountAvailable ?? null);
       }
     } catch {
       setApiError("Error de conexión");
@@ -219,8 +219,8 @@ export default function AccountsPage() {
       </div>
 
       {/* ── Disponible para ahorrar/invertir ── */}
-      {!loading && primaryAccount && dineroAAsignar !== null && (
-        <AvailableToSaveKPI amount={dineroAAsignar} primaryAccountName={primaryAccount.name} />
+      {!loading && primaryAccount && primaryAvailable !== null && (
+        <AvailableToSaveKPI amount={primaryAvailable} primaryAccountName={primaryAccount.name} />
       )}
       {!loading && !primaryAccount && (
         <p

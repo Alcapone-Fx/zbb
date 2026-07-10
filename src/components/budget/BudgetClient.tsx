@@ -21,6 +21,7 @@ function isPastMonth(month: string): boolean {
 const EMPTY_DATA: BudgetMonthData = {
   month: '',
   dineroAAsignar: 0,
+  primaryAccountAvailable: null,
   groups: [],
 }
 

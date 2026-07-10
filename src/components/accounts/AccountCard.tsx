@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Building2,
   PiggyBank,
@@ -72,47 +73,53 @@ export function AccountCard({ account, isOffBudget, onEdit }: Props) {
       className="flex items-center gap-3"
       style={{ padding: rowPadding, borderBottom, minHeight: "56px" }}
     >
-      <div
-        className="flex items-center justify-center w-11 h-11 shrink-0"
-        style={{
-          background: iconBg,
-          borderRadius: isOffBudget ? "50%" : "11px",
-        }}
+      <Link
+        href={`/transactions?account_id=${account.id}`}
+        aria-label={`Ver historial de ${account.name}`}
+        className="flex items-center gap-3 flex-1 min-w-0"
       >
-        <Icon size={16} strokeWidth={1.8} color={iconColor} />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <p
-            className="text-sm font-bold truncate"
-            style={{ color: "var(--text-main)" }}
-          >
-            {account.name}
-          </p>
-          {account.is_primary && (
-            <span
-              className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0"
-              style={{ background: "var(--ab)", color: "var(--ac)" }}
-            >
-              Principal
-            </span>
-          )}
-        </div>
-        <p
-          className="text-xs mt-0.5"
-          style={{ color: "var(--text-dim)" }}
+        <div
+          className="flex items-center justify-center w-11 h-11 shrink-0"
+          style={{
+            background: iconBg,
+            borderRadius: isOffBudget ? "50%" : "11px",
+          }}
         >
-          {TYPE_LABELS[account.type]}
-        </p>
-      </div>
+          <Icon size={16} strokeWidth={1.8} color={iconColor} />
+        </div>
 
-      <span className="text-sm font-bold tabular-nums shrink-0">
-        <MaskedAmount
-          value={formatCurrency(displayBalance)}
-          style={{ color: isNegative ? "var(--color-negative)" : "var(--color-positive)" }}
-        />
-      </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p
+              className="text-sm font-bold truncate"
+              style={{ color: "var(--text-main)" }}
+            >
+              {account.name}
+            </p>
+            {account.is_primary && (
+              <span
+                className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0"
+                style={{ background: "var(--ab)", color: "var(--ac)" }}
+              >
+                Principal
+              </span>
+            )}
+          </div>
+          <p
+            className="text-xs mt-0.5"
+            style={{ color: "var(--text-dim)" }}
+          >
+            {TYPE_LABELS[account.type]}
+          </p>
+        </div>
+
+        <span className="text-sm font-bold tabular-nums shrink-0">
+          <MaskedAmount
+            value={formatCurrency(displayBalance)}
+            style={{ color: isNegative ? "var(--color-negative)" : "var(--color-positive)" }}
+          />
+        </span>
+      </Link>
 
       <button
         onClick={() => onEdit(account)}
