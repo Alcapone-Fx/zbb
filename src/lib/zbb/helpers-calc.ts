@@ -209,6 +209,41 @@ export function simulateGroupYear(
   return results
 }
 
+export interface MonthStatusFund {
+  id: string
+  name: string
+  target_amount: number
+  target_date: string
+  is_paid: boolean
+  last_paid_date: string | null
+}
+
+/**
+ * Splits a group's funds into those still pending payment this calendar month
+ * (target_date falls in the current month and it hasn't been paid) and those
+ * already paid this calendar month (last_paid_date falls in the current month).
+ * Paying an annual fund advances its target_date immediately (see the /pay
+ * route), so a fund can only ever land in one of these two buckets at a time.
+ */
+export function computeMonthStatus<T extends MonthStatusFund>(
+  funds: T[],
+  today = new Date()
+): { pendingDue: T[]; paidThisMonth: T[] } {
+  const year = today.getFullYear()
+  const month = today.getMonth() + 1
+
+  const isThisMonth = (dateStr: string | null): boolean => {
+    if (!dateStr) return false
+    const [y, m] = dateStr.split('-').map(Number)
+    return y === year && m === month
+  }
+
+  return {
+    pendingDue: funds.filter((f) => !f.is_paid && isThisMonth(f.target_date)),
+    paidThisMonth: funds.filter((f) => isThisMonth(f.last_paid_date)),
+  }
+}
+
 export interface EmergencyFundTierInfo {
   tier: 0 | 1 | 2 | 3
   coveredMonths: number

@@ -43,7 +43,7 @@ export async function GET() {
   const [accountsRes, txRes, ccCategoriesRes] = await Promise.all([
     supabase
       .from('accounts')
-      .select('id, name, type, is_tracking_only, is_emergency_fund, is_archived, starting_balance, created_at')
+      .select('id, name, type, is_tracking_only, is_emergency_fund, is_primary, is_archived, starting_balance, created_at')
       .eq('user_id', user.id)
       .eq('is_archived', false),
 
@@ -84,6 +84,7 @@ export async function GET() {
       type: a.type as AccountWithBalance['type'],
       is_tracking_only: a.is_tracking_only,
       is_emergency_fund: a.is_emergency_fund,
+      is_primary: a.is_primary,
       is_archived: a.is_archived,
       starting_balance: Number(a.starting_balance),
       created_at: a.created_at,

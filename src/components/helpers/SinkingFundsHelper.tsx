@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { sinkingFundCalc, monthsRemaining, waterfallAllocate, simulateGroupYear } from '@/lib/zbb/helpers-calc'
+import { sinkingFundCalc, monthsRemaining, waterfallAllocate, simulateGroupYear, computeMonthStatus } from '@/lib/zbb/helpers-calc'
 import { todayLocalDateString } from '@/lib/zbb/date'
 import type { SinkingFund, SinkingFundGroup } from '@/types/helpers'
 import { AppSelect } from '@/components/ui/AppSelect'
@@ -684,7 +684,7 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
       })
       const json = await res.json()
       const msg = res.ok
-        ? `$${rounded.toFixed(2)} asignado`
+        ? `$${rounded.toFixed(2)} apartado para ahorro`
         : (json.error ?? 'Error al asignar')
       setAsignarState((s) => ({ ...s, [group.id]: { saving: false, msg } }))
       if (res.ok) {
@@ -1029,6 +1029,8 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
           const asState = asignarState[group.id]
           const isProjectionOpen = projectionOpenGroups.has(group.id)
           const unpaidGroupFunds = groupFunds.filter((f) => !f.is_paid)
+          const { pendingDue, paidThisMonth } = computeMonthStatus(groupFunds)
+          const dueAmount = pendingDue.reduce((sum, f) => sum + f.target_amount, 0)
           const projection = isProjectionOpen
             ? simulateGroupYear(
                 unpaidGroupFunds.map((f) => ({
@@ -1101,7 +1103,7 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center gap-2">
                       <p className="text-xs font-semibold" style={{ color: 'var(--ac)' }}>
-                        Total: ${totalMonthly.toFixed(2)}/mes
+                        🐷 Ahorrar este mes: ${totalMonthly.toFixed(2)}
                       </p>
                       {group.category_id && (
                         <span
@@ -1112,7 +1114,7 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
                               : { color: '#f59e0b', background: 'rgba(245,158,11,0.12)' }
                           }
                         >
-                          {isFullyAssigned ? '✓ Asignado' : '⚠ Pendiente este mes'}
+                          {isFullyAssigned ? '✓ Apartado este mes' : '⚠ Falta apartar'}
                         </span>
                       )}
                     </div>
@@ -1128,10 +1130,15 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
                       >
                         {asState?.saving
                           ? '…'
-                          : `Asignar $${totalMonthly.toFixed(2)}`}
+                          : `Apartar $${totalMonthly.toFixed(2)}`}
                       </button>
                     )}
                   </div>
+                )}
+                {totalMonthly > 0 && (
+                  <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-dim)' }}>
+                    Transferencia sugerida a tu cuenta de ahorro — no es un gasto de este mes.
+                  </p>
                 )}
 
                 {asState?.msg && (
@@ -1142,6 +1149,61 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
                   >
                     {asState.msg}
                   </p>
+                )}
+
+                {(pendingDue.length > 0 || paidThisMonth.length > 0) && (
+                  <div
+                    className="flex items-center justify-between mt-2 pt-2"
+                    style={{ borderTop: '1px solid var(--border-card)' }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-main)' }}>
+                        {pendingDue.length > 0
+                          ? `📅 Vence este mes: $${dueAmount.toFixed(2)}`
+                          : '📅 Vence este mes'}
+                      </p>
+                      <p className="text-[11px] truncate" style={{ color: 'var(--text-sub)' }}>
+                        {pendingDue.length > 0
+                          ? pendingDue.map((f) => f.name).join(', ')
+                          : paidThisMonth.map((f) => f.name).join(', ')}
+                      </p>
+                    </div>
+                    {pendingDue.length > 0 ? (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.12)' }}
+                        >
+                          ⚠ Pendiente de pago
+                        </span>
+                        {pendingDue.length === 1 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setCollapsedGroups((prev) => {
+                                if (!prev.has(group.id)) return prev
+                                const next = new Set(prev)
+                                next.delete(group.id)
+                                return next
+                              })
+                              openPay(pendingDue[0])
+                            }}
+                            className="text-xs px-2.5 py-1 rounded-lg font-semibold"
+                            style={{ background: 'var(--ac)', color: '#fff' }}
+                          >
+                            Pagar
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
+                        style={{ color: 'var(--color-positive)', background: 'rgba(34,197,94,0.12)' }}
+                      >
+                        ✓ Pagado
+                      </span>
+                    )}
+                  </div>
                 )}
 
                 {unpaidGroupFunds.length > 0 && (

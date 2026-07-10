@@ -5,6 +5,7 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import type { AccountWithBalance, AccountsResponse } from "@/types/account";
 import { AccountGroup } from "@/components/accounts/AccountGroup";
+import { AvailableToSaveKPI } from "@/components/accounts/AvailableToSaveKPI";
 import { CreateAccountModal } from "@/components/accounts/CreateAccountModal";
 import { EditAccountModal } from "@/components/accounts/EditAccountModal";
 import { ReconciliationSheet } from "@/components/accounts/ReconciliationSheet";
@@ -18,6 +19,11 @@ function formatCurrency(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
+}
+
+function currentMonthStr(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function computeMiniStats(data: AccountsResponse) {
@@ -39,6 +45,7 @@ function computeMiniStats(data: AccountsResponse) {
 export default function AccountsPage() {
   const transactionsVersion = useRefreshStore((s) => s.transactionsVersion);
   const [data, setData] = useState<AccountsResponse | null>(null);
+  const [dineroAAsignar, setDineroAAsignar] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -50,13 +57,20 @@ export default function AccountsPage() {
 
   const fetchAccounts = useCallback(async () => {
     try {
-      const res = await fetch("/api/accounts");
-      const json = await res.json();
-      if (!res.ok) {
+      const [accountsRes, budgetRes] = await Promise.all([
+        fetch("/api/accounts"),
+        fetch(`/api/budget/month?month=${currentMonthStr()}`),
+      ]);
+      const json = await accountsRes.json();
+      if (!accountsRes.ok) {
         setApiError(json.error ?? "Error al cargar cuentas");
       } else {
         setData(json);
         setApiError(null);
+      }
+      if (budgetRes.ok) {
+        const budgetJson = await budgetRes.json();
+        setDineroAAsignar(budgetJson.data?.dineroAAsignar ?? null);
       }
     } catch {
       setApiError("Error de conexión");
@@ -86,6 +100,7 @@ export default function AccountsPage() {
   const netWorth = data?.net_worth ?? 0;
   const netWorthNegative = netWorth < 0;
   const stats = data ? computeMiniStats(data) : null;
+  const primaryAccount = data?.on_budget.find((a) => a.is_primary) ?? null;
 
   if (loading) {
     return (
@@ -202,6 +217,19 @@ export default function AccountsPage() {
           </div>
         )}
       </div>
+
+      {/* ── Disponible para ahorrar/invertir ── */}
+      {!loading && primaryAccount && dineroAAsignar !== null && (
+        <AvailableToSaveKPI amount={dineroAAsignar} primaryAccountName={primaryAccount.name} />
+      )}
+      {!loading && !primaryAccount && (
+        <p
+          className="mx-5 mb-3 text-xs"
+          style={{ color: "var(--text-dim)" }}
+        >
+          Marca tu cuenta principal (editar cuenta) para ver aquí cuánto tienes disponible para ahorrar o invertir.
+        </p>
+      )}
 
       {/* ── Account groups ── */}
       <div className="pt-4 pb-4">

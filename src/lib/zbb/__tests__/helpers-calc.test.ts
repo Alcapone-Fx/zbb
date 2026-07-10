@@ -11,6 +11,7 @@ import {
   advanceMonths,
   emergencyFundTier,
   avgRecentActivity,
+  computeMonthStatus,
 } from '../helpers-calc'
 
 describe('daysInMonth', () => {
@@ -307,5 +308,87 @@ describe('emergencyFundTier', () => {
     const r = emergencyFundTier(6000, 1000)
     expect(r.tier).toBe(3)
     expect(r.color).toBe('green')
+  })
+})
+
+describe('computeMonthStatus', () => {
+  const today = new Date(2026, 5, 15) // Jun 15, 2026 (month is 0-indexed)
+
+  function fund(overrides: {
+    id: string
+    target_date: string
+    is_paid: boolean
+    last_paid_date?: string | null
+    target_amount?: number
+  }) {
+    return {
+      name: overrides.id,
+      target_amount: overrides.target_amount ?? 100,
+      last_paid_date: overrides.last_paid_date ?? null,
+      ...overrides,
+    }
+  }
+
+  it('puts an unpaid fund due this month into pendingDue', () => {
+    const { pendingDue, paidThisMonth } = computeMonthStatus(
+      [fund({ id: 'a', target_date: '2026-06-20', is_paid: false })],
+      today
+    )
+    expect(pendingDue.map((f) => f.id)).toEqual(['a'])
+    expect(paidThisMonth).toEqual([])
+  })
+
+  it('excludes an unpaid fund due in a different month', () => {
+    const { pendingDue } = computeMonthStatus(
+      [fund({ id: 'a', target_date: '2026-07-01', is_paid: false })],
+      today
+    )
+    expect(pendingDue).toEqual([])
+  })
+
+  it('puts a fund paid this month into paidThisMonth even if target_date already advanced', () => {
+    const { pendingDue, paidThisMonth } = computeMonthStatus(
+      [
+        fund({
+          id: 'a',
+          target_date: '2027-06-20', // advanced a year forward by /pay
+          is_paid: true,
+          last_paid_date: '2026-06-10',
+        }),
+      ],
+      today
+    )
+    expect(pendingDue).toEqual([])
+    expect(paidThisMonth.map((f) => f.id)).toEqual(['a'])
+  })
+
+  it('excludes a fund paid in an earlier month', () => {
+    const { paidThisMonth } = computeMonthStatus(
+      [fund({ id: 'a', target_date: '2026-05-01', is_paid: true, last_paid_date: '2026-05-28' })],
+      today
+    )
+    expect(paidThisMonth).toEqual([])
+  })
+
+  it('excludes a paid fund with no last_paid_date recorded', () => {
+    const { pendingDue, paidThisMonth } = computeMonthStatus(
+      [fund({ id: 'a', target_date: '2026-06-20', is_paid: true, last_paid_date: null })],
+      today
+    )
+    expect(pendingDue).toEqual([])
+    expect(paidThisMonth).toEqual([])
+  })
+
+  it('handles a mix of pending, paid, and unrelated funds', () => {
+    const { pendingDue, paidThisMonth } = computeMonthStatus(
+      [
+        fund({ id: 'due', target_date: '2026-06-05', is_paid: false }),
+        fund({ id: 'paid', target_date: '2027-06-05', is_paid: true, last_paid_date: '2026-06-01' }),
+        fund({ id: 'future', target_date: '2026-12-01', is_paid: false }),
+      ],
+      today
+    )
+    expect(pendingDue.map((f) => f.id)).toEqual(['due'])
+    expect(paidThisMonth.map((f) => f.id)).toEqual(['paid'])
   })
 })

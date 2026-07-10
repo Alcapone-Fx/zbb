@@ -83,12 +83,22 @@ export function AccountCard({ account, isOffBudget, onEdit }: Props) {
       </div>
 
       <div className="flex-1 min-w-0">
-        <p
-          className="text-sm font-bold truncate"
-          style={{ color: "var(--text-main)" }}
-        >
-          {account.name}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p
+            className="text-sm font-bold truncate"
+            style={{ color: "var(--text-main)" }}
+          >
+            {account.name}
+          </p>
+          {account.is_primary && (
+            <span
+              className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0"
+              style={{ background: "var(--ab)", color: "var(--ac)" }}
+            >
+              Principal
+            </span>
+          )}
+        </div>
         <p
           className="text-xs mt-0.5"
           style={{ color: "var(--text-dim)" }}

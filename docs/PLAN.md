@@ -182,9 +182,17 @@
 - **web:** ✅ Account list (On-Budget / Off-Budget groups), create account form, edit name, archive action, net worth totals
 - **db:** ✅ Route Handlers: GET+POST `/api/accounts`, PATCH `/api/accounts/[id]`; CC system category inserted on credit_card account creation
 - **Tests:** ✅ 10 unit tests (buildCreditCardCategoryName × 3, computeNetWorth × 7) — all pass
-- **Migrations:** ⏳ pending — `supabase/migrations/20260705000002_backfill_cc_payment_categories.sql` (data repair, not schema — schema itself is in M00)
+- **Migrations:** ⏳ pending — `supabase/migrations/20260705000002_backfill_cc_payment_categories.sql` (data repair, not schema — schema itself is in M00); `supabase/migrations/20260709000002_account_primary_flag.sql` (GitHub #16, `is_primary` flag)
 
 #### AI Notes
+> **Migration pending (2026-07-09, GitHub #16):** `20260709000002_account_primary_flag.sql` adds `accounts.is_primary BOOLEAN NOT NULL DEFAULT FALSE`
+> plus a unique partial index (`WHERE is_primary`) enforcing at most one primary account per user. Toggled from `EditAccountModal` via
+> `PATCH /api/accounts/[id]` (`action: 'set_primary'`), which clears any existing primary before setting the new one (no DB transaction
+> available from JS — same accepted pattern as transfer-pair writes, see CONVENTIONS.md). Drives the "Disponible para ahorrar/invertir"
+> indicator on `/accounts` (issue #16): since `budget_allocations` has no `account_id`, "Dinero a Asignar" is computed globally across all
+> on-budget accounts (see M08) — there is no per-account attribution in the schema. The indicator shows that global figure anchored to
+> the user's designated primary account rather than a true per-account calculation.
+>
 > **Migration pending (2026-07-05):** `20260705000002_backfill_cc_payment_categories.sql` is a one-time data repair (no `ALTER TABLE`).
 > Root cause: the "Sistema" `category_groups` row is created by `handle_new_user()`, which only fires if a Database Webhook on
 > `auth.users` INSERT was registered by hand in the Supabase dashboard — if that never happened (or happened after a user's account
@@ -593,6 +601,17 @@
 - **Migrations:** ⏳ pending — `supabase/migrations/20260705000001_sinking_fund_recurrence_months.sql`, `20260707000001_wishlist_converted_to_fund.sql`, `20260708000001_user_settings_spend_calculators.sql`, `20260709000001_wishlist_display_order.sql` (schema otherwise in M00)
 
 #### AI Notes
+> **"Este mes" panel (2026-07-09, GitHub #15):** `SinkingFundsHelper.tsx` group headers now show two lines instead of one
+> "Total: $X/mes": **"🐷 Ahorrar este mes"** (the existing monthly contribution total, relabeled, with a subtext clarifying it's a
+> transfer to savings, not a spend) and **"📅 Vence este mes"** (funds whose `target_date` falls in the current calendar month,
+> pending vs. paid). Purely presentational — the "Apartar $X" button still calls the same `POST /api/budget/allocations` with the
+> same amount as before ("Asignar"); no backend or schema change. New pure helper `computeMonthStatus()` in
+> `src/lib/zbb/helpers-calc.ts` derives pending/paid-this-month buckets from `target_date` + `is_paid` + `last_paid_date`. This
+> assumes the group's savings goal is paid from an **Off-Budget** `source_account_id` (per the group's setup) — the contribution is a
+> transfer between the user's own accounts, and the real expense only touches the budget indirectly (never as "Asignado"). If a
+> user's `source_account_id` is On-Budget instead, the current-month expense should be assigned directly rather than relying on this
+> panel — not handled by this change.
+>
 > **Migration pending (2026-07-07):** `20260707000001_wishlist_converted_to_fund.sql` adds nullable `wishlist_items.converted_to_fund_id`
 > (FK to `sinking_funds`, `ON DELETE SET NULL`). Powers the "Convertir en Fondo de Ahorro" bridge — promoting a wishlist item pre-fills
 > the sinking fund creation form with its name/estimated_cost, then marks the item converted (soft, not deleted) on success.
@@ -668,3 +687,9 @@
 | `20260703000001_cc_payment_linked_account.sql` | CC payment tracking | main session | ⏳ PENDING |
 | `20260703000002_sinking_fund_groups.sql` | Sinking Fund Groups redesign | worktree agent | ⏳ PENDING |
 | `20260703000003_account_emergency_fund_flag.sql` | is_emergency_fund flag on accounts | worktree agent | ⏳ PENDING |
+| `20260705000001_sinking_fund_recurrence_months.sql` | recurrence_months on sinking_funds | worktree agent | ⏳ PENDING |
+| `20260705000002_backfill_cc_payment_categories.sql` | CC payment category data repair | main session | ⏳ PENDING |
+| `20260707000001_wishlist_converted_to_fund.sql` | converted_to_fund_id on wishlist_items | main session | ⏳ PENDING |
+| `20260708000001_user_settings_spend_calculators.sql` | grocery/recurring calculator settings | main session | ⏳ PENDING |
+| `20260709000001_wishlist_display_order.sql` | display_order on wishlist_items | main session | ⏳ PENDING |
+| `20260709000002_account_primary_flag.sql` | is_primary flag on accounts (GitHub #16) | main session | ⏳ PENDING |

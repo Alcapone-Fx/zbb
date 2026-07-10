@@ -23,8 +23,10 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
 
   const [isTrackingOnly, setIsTrackingOnly] = useState(false);
   const [isEmergencyFund, setIsEmergencyFund] = useState(false);
+  const [isPrimary, setIsPrimary] = useState(false);
   const [savingBudgetType, setSavingBudgetType] = useState(false);
   const [savingEmergencyFund, setSavingEmergencyFund] = useState(false);
+  const [savingPrimary, setSavingPrimary] = useState(false);
 
   useEffect(() => {
     if (account) {
@@ -32,6 +34,7 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
       setName(account.name);
       setIsTrackingOnly(account.is_tracking_only);
       setIsEmergencyFund(account.is_emergency_fund);
+      setIsPrimary(account.is_primary);
       setError(null);
       setArchiveError(null);
     }
@@ -78,6 +81,9 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
         // If switching to on-budget, clear the emergency fund flag locally
         if (!newIsTrackingOnly) {
           setIsEmergencyFund(false);
+        } else {
+          // If switching to off-budget, the primary toggle no longer applies
+          setIsPrimary(false);
         }
         onSaved();
       }
@@ -105,6 +111,26 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
       // silently ignore — UI stays at previous state
     } finally {
       setSavingEmergencyFund(false);
+    }
+  }
+
+  async function handleSetPrimary(newIsPrimary: boolean) {
+    if (!account || savingPrimary) return;
+    setSavingPrimary(true);
+    try {
+      const res = await fetch(`/api/accounts/${account.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_primary", is_primary: newIsPrimary }),
+      });
+      if (res.ok) {
+        setIsPrimary(newIsPrimary);
+        onSaved();
+      }
+    } catch {
+      // silently ignore — UI stays at previous state
+    } finally {
+      setSavingPrimary(false);
     }
   }
 
@@ -269,6 +295,61 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
               {!isTrackingOnly
                 ? "Los movimientos de esta cuenta afectan tu presupuesto."
                 : "Solo seguimiento — no afecta el presupuesto ni el Dinero a Asignar."}
+            </p>
+          </div>
+        )}
+
+        {/* Primary account toggle — shown only for on-budget, non-credit-card accounts */}
+        {!isCreditCard && !isTrackingOnly && (
+          <div
+            className="mt-5 pt-4 flex flex-col gap-2"
+            style={{ borderTop: "1px solid var(--border-card)" }}
+          >
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-dim)" }}>
+              Cuenta principal
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={savingPrimary}
+                onClick={() => { if (!isPrimary) handleSetPrimary(true); }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-50"
+                style={
+                  isPrimary
+                    ? {
+                        background: "var(--ab)",
+                        color: "var(--ac)",
+                        border: "1px solid var(--aB)",
+                      }
+                    : {
+                        background: "var(--bg-elevated)",
+                        color: "var(--text-sub)",
+                        border: "1px solid transparent",
+                      }
+                }
+              >
+                Marcar como principal
+              </button>
+              {isPrimary && (
+                <button
+                  type="button"
+                  disabled={savingPrimary}
+                  onClick={() => handleSetPrimary(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-50"
+                  style={{
+                    background: "var(--bg-elevated)",
+                    color: "var(--text-sub)",
+                    border: "1px solid transparent",
+                  }}
+                >
+                  Quitar
+                </button>
+              )}
+            </div>
+            <p className="text-xs" style={{ color: "var(--text-sub)" }}>
+              {isPrimary
+                ? "Esta es tu cuenta principal — en Cuentas verás cuánto tienes disponible para ahorrar o invertir."
+                : "Márcala como tu cuenta de operaciones principal para ver ahí cuánto te queda disponible para ahorrar o invertir."}
             </p>
           </div>
         )}

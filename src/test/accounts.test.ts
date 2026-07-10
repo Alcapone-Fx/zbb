@@ -9,6 +9,7 @@ function makeAccount(overrides: Partial<AccountWithBalance>): AccountWithBalance
     type: 'checking',
     is_tracking_only: false,
     is_emergency_fund: false,
+    is_primary: false,
     is_archived: false,
     starting_balance: 0,
     created_at: '2026-01-01T00:00:00Z',

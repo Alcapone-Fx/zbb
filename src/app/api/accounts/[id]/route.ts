@@ -110,5 +110,35 @@ export async function PATCH(
     return NextResponse.json({ data: { success: true } })
   }
 
+  if (parsed.data.action === 'set_primary') {
+    if (parsed.data.is_primary) {
+      // Only one primary account per user (enforced by a unique partial index) —
+      // clear any existing primary first since there's no DB transaction from JS.
+      const { error: clearErr } = await supabase
+        .from('accounts')
+        .update({ is_primary: false })
+        .eq('user_id', user.id)
+        .eq('is_primary', true)
+
+      if (clearErr) {
+        console.error('PATCH /api/accounts/[id] set_primary clear error', clearErr)
+        return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+      }
+    }
+
+    const { error } = await supabase
+      .from('accounts')
+      .update({ is_primary: parsed.data.is_primary })
+      .eq('id', id)
+      .eq('user_id', user.id)
+
+    if (error) {
+      console.error('PATCH /api/accounts/[id] set_primary error', error)
+      return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+    }
+
+    return NextResponse.json({ data: { success: true } })
+  }
+
   return NextResponse.json({ error: 'Acción no reconocida' }, { status: 400 })
 }
