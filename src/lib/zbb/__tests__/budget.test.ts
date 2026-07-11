@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   computeDisponibles,
-  computeDineroAAsignar,
+  sumReservedDisponible,
+  computeReadyToAssign,
   getPrevMonth,
   monthEnd,
 } from '../budget'
@@ -101,45 +102,66 @@ describe('computeDisponibles', () => {
   })
 })
 
-describe('computeDineroAAsignar', () => {
-  it('basic formula', () => {
-    const result = computeDineroAAsignar({
-      incomeThisMonth: 3000,
-      incomeLastMonthNextFlag: 500,
-      totalAllocatedThisMonth: 2000,
-      negativeRolloverPrevMonth: 0,
-    })
-    expect(result).toBe(1500) // 3000 + 500 - 2000 + 0
+describe('sumReservedDisponible', () => {
+  it('sums positive disponible across categories', () => {
+    const result = sumReservedDisponible(
+      { a: 300, b: 150 },
+      ['a', 'b'],
+      new Set()
+    )
+    expect(result).toBe(450)
   })
 
-  it('negative rollover reduces available', () => {
-    const result = computeDineroAAsignar({
-      incomeThisMonth: 3000,
-      incomeLastMonthNextFlag: 0,
-      totalAllocatedThisMonth: 2000,
-      negativeRolloverPrevMonth: -200, // two categories overspent
-    })
-    expect(result).toBe(800) // 3000 + 0 - 2000 + (-200)
+  it('excludes negative disponible (already reflected in the balance, not reserved)', () => {
+    const result = sumReservedDisponible(
+      { a: 300, b: -100 },
+      ['a', 'b'],
+      new Set()
+    )
+    expect(result).toBe(300)
   })
 
-  it('fully allocated leaves zero', () => {
-    const result = computeDineroAAsignar({
-      incomeThisMonth: 2000,
-      incomeLastMonthNextFlag: 0,
-      totalAllocatedThisMonth: 2000,
-      negativeRolloverPrevMonth: 0,
-    })
-    expect(result).toBe(0)
+  it('excludes CC mirror categories even when positive', () => {
+    // A "Pago · X" category tracks amount owed on a card, not cash sitting
+    // in an on-budget account — its cash effect already lives in the card
+    // account's own (negative) balance. Including it here would double
+    // count the same debt.
+    const result = sumReservedDisponible(
+      { groceries: 300, 'pago-visa': 50 },
+      ['groceries', 'pago-visa'],
+      new Set(['pago-visa'])
+    )
+    expect(result).toBe(300)
   })
 
-  it('over-allocated goes negative', () => {
-    const result = computeDineroAAsignar({
-      incomeThisMonth: 1000,
-      incomeLastMonthNextFlag: 0,
-      totalAllocatedThisMonth: 1200,
-      negativeRolloverPrevMonth: 0,
-    })
-    expect(result).toBe(-200)
+  it('ignores categories missing from the disponibles map', () => {
+    const result = sumReservedDisponible({ a: 300 }, ['a', 'b'], new Set())
+    expect(result).toBe(300)
+  })
+
+  it('returns 0 for no categories', () => {
+    expect(sumReservedDisponible({}, [], new Set())).toBe(0)
+  })
+})
+
+describe('computeReadyToAssign', () => {
+  it('balance minus reserved money', () => {
+    expect(computeReadyToAssign(5000, 3200)).toBe(1800)
+  })
+
+  it('an old opening balance never assigned still counts (cumulative by construction)', () => {
+    // Money that entered an account weeks ago, never assigned to a
+    // category, is simply part of the balance — no special handling needed,
+    // unlike the old month-scoped income-flow formula.
+    expect(computeReadyToAssign(2000, 0)).toBe(2000)
+  })
+
+  it('goes negative when more is reserved than the account actually holds', () => {
+    expect(computeReadyToAssign(500, 800)).toBe(-300)
+  })
+
+  it('zero balance, zero reserved', () => {
+    expect(computeReadyToAssign(0, 0)).toBe(0)
   })
 })
 

@@ -501,11 +501,27 @@
 - **Worktree:** wt-m08-budget
 - **web:** ✅ Budget main view (home screen after login), month navigator, "Dinero a Asignar" KPI, category table (Asignado / Actividad / Disponible), inline assign editing, budget template (apply + save), trends panel (side panel per category — 6-month chart)
 - **db:** ✅ GET /api/budget/month (full month data + Disponible + Dinero a Asignar); POST /api/budget/allocations (upsert); GET|PUT /api/budget/template; POST /api/budget/template/apply; GET /api/budget/trends/[categoryId]
-- **Tests:** ✅ 12 unit tests (computeDisponibles × 6, computeDineroAAsignar × 4, getPrevMonth × 2, monthEnd × 4) — vitest v4 blocked by Windows Application Control (same as M05); tests authored and verified by type-check
+- **Tests:** ✅ 21 unit tests (computeDisponibles × 6, sumReservedDisponible × 5, computeReadyToAssign × 4, getPrevMonth × 2, monthEnd × 4) — `computeDineroAAsignar`'s 4 tests replaced 2026-07-11 along with the function itself; vitest v4 blocked by Windows Application Control (same as M05); tests authored and verified by type-check
 - **Migrations:** — (schema in M00; `budget_template` JSONB in `user_settings`)
 
 #### AI Notes
-> **"Disponible" formula** (TRD §4.3 — recursive):
+> **"Dinero a Asignar" rebuilt as cumulative/balance-based (2026-07-11):** the TRD §8.1 flow
+> formula below (income − allocated + prior-month rollover) is **no longer used** — it silently
+> lost any money that entered an on-budget account (e.g. an account's `opening_balance`) before
+> the exact calendar month it was created in, since it never carried forward as unassigned in
+> later months. Replaced by `computeReadyToAssign(totalBalance, reservedDisponible)` =
+> `totalOnBudgetBalance − Σ(positive Disponible across categories, excluding CC "Pago · X"
+> mirrors)` in `src/lib/zbb/budget.ts`, fed by a balance snapshot computed in
+> `src/app/api/budget/month/route.ts` via a second, **date-lower-bound-free** transactions query
+> (same pattern as `sumBalancesByAccount` in `/api/accounts`/`/api/dashboard`) — deliberately not
+> scoped to `earliestMonth` like the activity query, since `budget_months` rows (and thus
+> `earliestMonth`) are created lazily and can postdate account creation. See
+> `docs/CONVENTIONS.md` 2026-07-11 entries for the full derivation, the CC-mirror double-count
+> bug caught in review, and the new category-archive guard this required. `primaryAccountAvailable`
+> (`/accounts`' "Disponible para ahorrar/invertir") uses the same `reservedDisponible` against the
+> primary account's own balance instead of the total.
+>
+> **"Disponible" formula** (TRD §4.3 — recursive, unchanged by the above):
 > ```
 > Disponible(M, C) = allocated(M, C) + rollover(M−1, C) − activity(M, C)
 > rollover(M, C) = Disponible(M, C)  [recursive; base = 0 if no prior allocation]
@@ -513,14 +529,6 @@
 > ```
 > Compute server-side in the Route Handler. Fetch all months from the earliest `budget_months`
 > record to the current month, then walk forward. Do NOT compute recursively per-row on the client.
->
-> **"Dinero a Asignar" formula** (TRD §8.1):
-> ```
-> = SUM(income in On-Budget accounts, month M, next_month=false)
-> + SUM(income month M−1, next_month=true)
-> − SUM(budget_allocations.assigned_amount, month M)
-> + rollover_negativo(M−1)  [sum of negative Disponibles from prior month]
-> ```
 >
 > **Inline editing:** Clicking "Asignado" cell opens an input in-place. On blur/Enter, PATCH the
 > `budget_allocations` record and optimistically update "Dinero a Asignar" in the Zustand store.

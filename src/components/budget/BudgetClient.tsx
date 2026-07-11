@@ -86,11 +86,20 @@ export function BudgetClient({ initialMonth, initialData }: Props) {
   // Optimistic update when user edits an allocation
   function handleEdit(categoryId: string, newAmount: number) {
     setData((prev) => {
-      const oldAssigned = prev.groups
+      const oldCategory = prev.groups
         .flatMap((g) => g.categories)
-        .find((c) => c.id === categoryId)?.assigned ?? 0
+        .find((c) => c.id === categoryId)
+      const oldAssigned = oldCategory?.assigned ?? 0
+      const oldDisponible = oldCategory?.disponible ?? 0
 
       const delta = newAmount - oldAssigned
+      const newDisponible = oldDisponible + delta
+      // dineroAAsignar is balance-based now: it only moves by how much
+      // *reserved* (positive Disponible) money changed, not by the raw
+      // assigned delta — a category that stays negative before and after
+      // the edit shouldn't move it at all (see src/lib/zbb/budget.ts's
+      // sumReservedDisponible, which this must mirror).
+      const reservedDelta = Math.max(0, newDisponible) - Math.max(0, oldDisponible)
 
       const newGroups: BudgetGroupRow[] = prev.groups.map((g) => ({
         ...g,
@@ -99,14 +108,14 @@ export function BudgetClient({ initialMonth, initialData }: Props) {
           return {
             ...c,
             assigned: newAmount,
-            disponible: c.disponible + delta,
+            disponible: newDisponible,
           }
         }),
       }))
 
       return {
         ...prev,
-        dineroAAsignar: prev.dineroAAsignar - delta,
+        dineroAAsignar: prev.dineroAAsignar - reservedDelta,
         groups: newGroups,
       }
     })

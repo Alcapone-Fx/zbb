@@ -3,11 +3,13 @@ import { createClient } from '@/lib/supabase/server'
 import { monthSchema } from '@/types/budget'
 import {
   computeDisponibles,
-  computeDineroAAsignar,
-  getPrevMonth,
+  sumReservedDisponible,
+  computeReadyToAssign,
   monthEnd,
 } from '@/lib/zbb/budget'
+import { sumBalancesByAccount, signedAccountBalance } from '@/lib/zbb/accounts'
 import type { BudgetMonthData, BudgetGroupRow, BudgetCategoryRow } from '@/types/budget'
+import type { AccountType } from '@/types/account'
 
 function currentMonth(): string {
   const now = new Date()
@@ -60,7 +62,6 @@ export async function GET(req: Request) {
 
   const budgetMonthIds = allMonths.map((m) => m.id)
   const earliestMonth = sortedMonths[0] ?? targetMonth
-  const prevMonth = getPrevMonth(targetMonth)
 
   // Parallel: groups+cats, on-budget accounts, allocations
   const [groupsRes, catsRes, accountsRes, allocsRes] = await Promise.all([
@@ -79,7 +80,7 @@ export async function GET(req: Request) {
 
     supabase
       .from('accounts')
-      .select('id, is_primary')
+      .select('id, is_primary, type')
       .eq('user_id', user.id)
       .eq('is_tracking_only', false)
       .eq('is_archived', false),
@@ -126,22 +127,38 @@ export async function GET(req: Request) {
   // Transactions: from earliest month to end of target month, on-budget accounts
   const dateFrom = `${earliestMonth}-01`
   const dateTo = monthEnd(targetMonth)
-  // Also need prev month for income next_month=true → extend start if prevMonth < earliest
-  const fetchFrom = prevMonth < earliestMonth ? `${prevMonth}-01` : dateFrom
 
-  const txQuery =
+  const [txQuery, balanceTxQuery] =
     onBudgetIds.length > 0
-      ? await supabase
-          .from('transactions')
-          .select('category_id, amount, date, type, next_month, account_id')
-          .eq('user_id', user.id)
-          .in('account_id', onBudgetIds)
-          .gte('date', fetchFrom)
-          .lte('date', dateTo)
-      : { data: [], error: null }
+      ? await Promise.all([
+          supabase
+            .from('transactions')
+            .select('category_id, amount, date, type, account_id')
+            .eq('user_id', user.id)
+            .in('account_id', onBudgetIds)
+            .gte('date', dateFrom)
+            .lte('date', dateTo),
+          // Unbounded lower date — this is the balance snapshot behind
+          // computeReadyToAssign, which must include money that entered an
+          // on-budget account (e.g. an opening_balance) before the user's
+          // earliest budget_months row, or that money is invisible forever.
+          // Capped at the same dateTo as the activity query above so a
+          // past-month view stays consistent with that month's Disponible.
+          supabase
+            .from('transactions')
+            .select('account_id, category_id, amount, type')
+            .eq('user_id', user.id)
+            .in('account_id', onBudgetIds)
+            .lte('date', dateTo),
+        ])
+      : [{ data: [], error: null }, { data: [], error: null }]
 
   if (txQuery.error) {
     console.error('GET /api/budget/month transactions error', txQuery.error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+  if (balanceTxQuery.error) {
+    console.error('GET /api/budget/month balance transactions error', balanceTxQuery.error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
@@ -149,14 +166,6 @@ export async function GET(req: Request) {
 
   // Build activity map: month -> catId -> signed sum (for disponible computation)
   const activitiesMap: Record<string, Record<string, number>> = {}
-  // Income sums for Dinero a Asignar (global, all on-budget accounts)
-  let incomeThisMonth = 0
-  let incomeLastMonthNextFlag = 0
-  // Same income sums, scoped only to the primary account — powers /accounts'
-  // "Disponible para ahorrar/invertir" (income into that specific account,
-  // not the whole on-budget universe; see CONVENTIONS.md 2026-07-10 entry)
-  let incomeThisMonthPrimary = 0
-  let incomeLastMonthNextFlagPrimary = 0
 
   for (const tx of allTx) {
     const txMonth = tx.date.slice(0, 7) // YYYY-MM
@@ -174,25 +183,6 @@ export async function GET(req: Request) {
       if (!activitiesMap[txMonth]) activitiesMap[txMonth] = {}
       activitiesMap[txMonth][tx.category_id] =
         (activitiesMap[txMonth][tx.category_id] ?? 0) + amount
-    }
-
-    // Income for Dinero a Asignar — a positive reconciliation adjustment counts
-    // as found income, but a CC mirror adjustment (same type, opposite intent)
-    // must not, or every credit card purchase would inflate "Dinero a Asignar".
-    const isCcMirror = Boolean(tx.category_id && ccMirrorCategoryIds.has(tx.category_id))
-    const countsAsIncome =
-      tx.type === 'income' ||
-      tx.type === 'opening_balance' ||
-      (tx.type === 'adjustment' && amount > 0 && !isCcMirror)
-
-    if (countsAsIncome) {
-      if (txMonth === targetMonth && !tx.next_month) {
-        incomeThisMonth += amount
-        if (tx.account_id === primaryAccountId) incomeThisMonthPrimary += amount
-      } else if (txMonth === prevMonth && tx.next_month) {
-        incomeLastMonthNextFlag += amount
-        if (tx.account_id === primaryAccountId) incomeLastMonthNextFlagPrimary += amount
-      }
     }
   }
 
@@ -233,55 +223,38 @@ export async function GET(req: Request) {
     categoryIds
   )
 
-  // Negative rollover from previous month for Dinero a Asignar
-  const prevMonthDisponibles = allDisponibles[prevMonth] ?? {}
-  let negativeRolloverPrevMonth = 0
-  for (const catId of categoryIds) {
-    const d = prevMonthDisponibles[catId] ?? 0
-    if (d < 0) negativeRolloverPrevMonth += d
-  }
-
   const targetDisponibles = allDisponibles[targetMonth] ?? {}
 
-  // Negative Disponible for the TARGET month itself — used only by
-  // primaryAccountAvailable below, not by the global dineroAAsignar. Since
-  // computeDisponibles recurses (disponible(M) = assigned(M) + disponible(M-1)
-  // + activity(M)), this already subsumes any prior months' unresolved
-  // overspending, so it must replace — not add to — negativeRolloverPrevMonth
-  // or that carried-forward deficit would be double-counted.
-  let negativeThisMonth = 0
-  for (const catId of categoryIds) {
-    const d = targetDisponibles[catId] ?? 0
-    if (d < 0) negativeThisMonth += d
-  }
-
-  // Total allocated this month
-  const totalAllocatedThisMonth = Object.values(
-    allocationsMap[targetMonth] ?? {}
-  ).reduce((s, v) => s + v, 0)
-
-  const dineroAAsignar = computeDineroAAsignar({
-    incomeThisMonth,
-    incomeLastMonthNextFlag,
-    totalAllocatedThisMonth,
-    negativeRolloverPrevMonth,
-  })
-
-  // Same formula, but income scoped to the primary account only — total
-  // allocated stays global (there's no per-account attribution for budget
-  // allocations). Unlike dineroAAsignar, this uses negativeThisMonth (not
-  // negativeRolloverPrevMonth) so an overspent category dents "Disponible
-  // para ahorrar/invertir" immediately instead of one month later — the
-  // user explicitly asked for this to be real-time, unlike the global KPI.
-  // Null when no account is marked primary.
-  const primaryAccountAvailable = primaryAccountId
-    ? computeDineroAAsignar({
-        incomeThisMonth: incomeThisMonthPrimary,
-        incomeLastMonthNextFlag: incomeLastMonthNextFlagPrimary,
-        totalAllocatedThisMonth,
-        negativeRolloverPrevMonth: negativeThisMonth,
+  // Balance snapshot (as of dateTo) for the on-budget universe, and for the
+  // primary account alone — the two bases computeReadyToAssign subtracts
+  // reservedDisponible from. Cumulative by construction: it reflects every
+  // dollar currently in an on-budget account, regardless of which month it
+  // arrived in.
+  const balanceMap = sumBalancesByAccount(balanceTxQuery.data ?? [], ccMirrorCategoryIds)
+  const onBudgetAccounts = accountsRes.data ?? []
+  const totalOnBudgetBalance = onBudgetAccounts.reduce(
+    (sum, a) =>
+      sum + signedAccountBalance({ type: a.type as AccountType, balance: balanceMap[a.id] ?? 0 }),
+    0
+  )
+  const primaryAccount = onBudgetAccounts.find((a) => a.id === primaryAccountId)
+  const primaryAccountBalance = primaryAccount
+    ? signedAccountBalance({
+        type: primaryAccount.type as AccountType,
+        balance: balanceMap[primaryAccount.id] ?? 0,
       })
     : null
+
+  const reservedDisponible = sumReservedDisponible(targetDisponibles, categoryIds, ccMirrorCategoryIds)
+  const dineroAAsignar = computeReadyToAssign(totalOnBudgetBalance, reservedDisponible)
+  // Same reservedDisponible subtrahend as the global figure — "asignado"
+  // stays global since budget_allocations has no per-account attribution
+  // (see docs/CONVENTIONS.md 2026-07-10 entries). Null when no account is
+  // marked primary.
+  const primaryAccountAvailable =
+    primaryAccountBalance !== null
+      ? computeReadyToAssign(primaryAccountBalance, reservedDisponible)
+      : null
 
   // Build response groups
   const targetAllocations = allocationsMap[targetMonth] ?? {}

@@ -35,6 +35,30 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   }
 
+  // Archiving drops a category out of the "reserved money" sum that backs
+  // "Dinero a Asignar" (see sumReservedDisponible in src/lib/zbb/budget.ts)
+  // — if it still holds a nonzero Disponible, archiving would silently
+  // "free" money that was never actually spent. Disponible collapses to a
+  // flat sum since it's a recursive rollover: assigned(M) + disponible(M-1)
+  // + activity(M) unrolled = Σ(all assigned ever) + Σ(all activity ever).
+  if (parsed.data.is_archived === true) {
+    const [{ data: allocs }, { data: txs }] = await Promise.all([
+      supabase.from('budget_allocations').select('assigned_amount').eq('category_id', id),
+      supabase.from('transactions').select('amount').eq('category_id', id).eq('user_id', user.id),
+    ])
+    const disponible =
+      (allocs ?? []).reduce((s, a) => s + Number(a.assigned_amount), 0) +
+      (txs ?? []).reduce((s, t) => s + Number(t.amount), 0)
+    if (Math.abs(disponible) > 0.01) {
+      return NextResponse.json(
+        {
+          error: `No puedes archivar una categoría con Disponible distinto de cero (actual: ${disponible.toFixed(2)})`,
+        },
+        { status: 400 }
+      )
+    }
+  }
+
   const updates: Record<string, unknown> = {}
   if (parsed.data.name !== undefined) updates.name = parsed.data.name
   if (parsed.data.group_id !== undefined) updates.group_id = parsed.data.group_id

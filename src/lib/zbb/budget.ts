@@ -37,25 +37,42 @@ export function computeDisponibles(
 }
 
 /**
- * Computes "Dinero a Asignar" — the ready-to-assign balance for month M.
+ * Sum of "reserved" money across categories — money assigned/rolled into an
+ * envelope that hasn't been spent yet (POSITIVE Disponible only). Negative
+ * Disponible (overspending) is not subtracted again here: the overspend
+ * already reduced the real account balance, so it's reflected on the other
+ * side of computeReadyToAssign instead.
  *
- * = income(M, next_month=false)
- * + income(M−1, next_month=true)
- * − totalAllocated(M)
- * + negativeRolloverPrevMonth   [sum of negative Disponibles from M−1; itself ≤ 0]
+ * CC "Pago · X" mirror categories are always excluded, even though they're
+ * ordinary categories otherwise. Their Disponible tracks "amount owed on
+ * the card, not yet paid" — synthetic bookkeeping, not cash sitting in an
+ * on-budget account. The cash effect of the debt is already captured by the
+ * linked credit card account's own (negative) balance; including the mirror
+ * category here would double-subtract the same debt.
  */
-export function computeDineroAAsignar(params: {
-  incomeThisMonth: number
-  incomeLastMonthNextFlag: number
-  totalAllocatedThisMonth: number
-  negativeRolloverPrevMonth: number
-}): number {
-  return (
-    params.incomeThisMonth +
-    params.incomeLastMonthNextFlag -
-    params.totalAllocatedThisMonth +
-    params.negativeRolloverPrevMonth
-  )
+export function sumReservedDisponible(
+  disponibles: Record<string, number>,
+  categoryIds: string[],
+  ccMirrorCategoryIds: Set<string>
+): number {
+  let sum = 0
+  for (const catId of categoryIds) {
+    if (ccMirrorCategoryIds.has(catId)) continue
+    const d = disponibles[catId] ?? 0
+    if (d > 0) sum += d
+  }
+  return sum
+}
+
+/**
+ * "Dinero a Asignar" — cumulative, balance-based: total on-budget cash minus
+ * what's still reserved in envelopes. Naturally cumulative (a live balance
+ * snapshot, not a monthly income/allocation flow), so money that entered the
+ * budget in any past month — e.g. an account's opening balance — is never
+ * "lost": it stays visible here until it's actually assigned to a category.
+ */
+export function computeReadyToAssign(totalBalance: number, reservedDisponible: number): number {
+  return totalBalance - reservedDisponible
 }
 
 /** Returns the YYYY-MM of the month before a given YYYY-MM. */

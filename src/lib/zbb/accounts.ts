@@ -5,6 +5,16 @@ export function buildCreditCardCategoryName(accountName: string): string {
 }
 
 /**
+ * Signed balance for aggregation: `liability` accounts store a positive
+ * "amount owed" — the opposite convention from every other type (negative =
+ * you owe) — so they must be subtracted rather than added when summing into
+ * a total.
+ */
+export function signedAccountBalance(a: { type: AccountWithBalance['type']; balance: number }): number {
+  return a.type === 'liability' ? -a.balance : a.balance
+}
+
+/**
  * Net worth = sum of all non-archived account balances,
  * with liability balances SUBTRACTED (stored as positive "amount owed").
  * All other account types use signed balances (negative = you owe, positive = you have).
@@ -12,12 +22,7 @@ export function buildCreditCardCategoryName(accountName: string): string {
 export function computeNetWorth(accounts: AccountWithBalance[]): number {
   return accounts
     .filter((a) => !a.is_archived)
-    .reduce((sum, a) => {
-      if (a.type === 'liability') {
-        return sum - a.balance
-      }
-      return sum + a.balance
-    }, 0)
+    .reduce((sum, a) => sum + signedAccountBalance(a), 0)
 }
 
 export interface BalanceTransaction {

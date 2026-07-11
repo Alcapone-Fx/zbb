@@ -35,6 +35,39 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   }
 
+  // Same guard as archiving a single category (see
+  // src/app/api/categories/[id]/route.ts), summed across every non-system
+  // category in the group — archiving the group cascades to archive all of
+  // them below, and each one's Disponible collapses to Σ(assigned ever) +
+  // Σ(activity ever).
+  if (parsed.data.is_archived === true) {
+    const { data: groupCategories } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('group_id', id)
+      .eq('user_id', user.id)
+      .eq('is_system', false)
+
+    const groupCategoryIds = (groupCategories ?? []).map((c) => c.id)
+    if (groupCategoryIds.length > 0) {
+      const [{ data: allocs }, { data: txs }] = await Promise.all([
+        supabase.from('budget_allocations').select('assigned_amount').in('category_id', groupCategoryIds),
+        supabase.from('transactions').select('amount').in('category_id', groupCategoryIds).eq('user_id', user.id),
+      ])
+      const disponible =
+        (allocs ?? []).reduce((s, a) => s + Number(a.assigned_amount), 0) +
+        (txs ?? []).reduce((s, t) => s + Number(t.amount), 0)
+      if (Math.abs(disponible) > 0.01) {
+        return NextResponse.json(
+          {
+            error: `No puedes archivar un grupo con Disponible distinto de cero en sus categorías (actual: ${disponible.toFixed(2)})`,
+          },
+          { status: 400 }
+        )
+      }
+    }
+  }
+
   const updates: Record<string, unknown> = {}
   if (parsed.data.name !== undefined) updates.name = parsed.data.name
   if (parsed.data.ideal_percentage !== undefined)

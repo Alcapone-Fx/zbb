@@ -191,6 +191,10 @@ function BudgetGroup({ group, month, onEdit, onTrends, isPast }: BudgetGroupProp
   const totalAssigned = group.categories.reduce((s, c) => s + c.assigned, 0)
   const totalActivity = group.categories.reduce((s, c) => s + c.activity, 0)
   const totalDisponible = group.categories.reduce((s, c) => s + c.disponible, 0)
+  // A category overspent inside this group can hide behind a fine (or even
+  // positive) group total once other categories' Disponible offsets it —
+  // flag it explicitly so it's visible without expanding every group.
+  const hasOverspentCategory = group.categories.some((c) => c.disponible < 0)
 
   return (
     <div>
@@ -212,6 +216,13 @@ function BudgetGroup({ group, month, onEdit, onTrends, isPast }: BudgetGroupProp
           >
             {group.name}
           </span>
+          {hasOverspentCategory && (
+            <span
+              aria-label="Alguna categoría de este grupo está sobregirada"
+              className="w-1.5 h-1.5 rounded-full shrink-0"
+              style={{ background: 'var(--color-negative)' }}
+            />
+          )}
         </span>
         <span className="text-right text-[11px] font-bold tabular-nums" style={{ color: 'var(--text-main)' }}>
           <MaskedAmount value={formatExact(totalAssigned)} />
