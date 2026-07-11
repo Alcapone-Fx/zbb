@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sumBalancesByAccount } from '@/lib/zbb/accounts'
 
 export async function GET() {
   const supabase = await createClient()
@@ -8,7 +9,7 @@ export async function GET() {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [settingsResult, accountsResult, transactionsResult] = await Promise.all([
+  const [settingsResult, accountsResult, transactionsResult, ccCategoriesResult] = await Promise.all([
     supabase
       .from('user_settings')
       .select('emergency_fund_min_expense')
@@ -22,8 +23,13 @@ export async function GET() {
       .eq('is_archived', false),
     supabase
       .from('transactions')
-      .select('account_id, amount')
+      .select('account_id, category_id, amount, type')
       .eq('user_id', user.id),
+    supabase
+      .from('categories')
+      .select('id')
+      .eq('user_id', user.id)
+      .not('linked_account_id', 'is', null),
   ])
 
   if (accountsResult.error || transactionsResult.error) {
@@ -31,10 +37,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
-  const balanceMap: Record<string, number> = {}
-  for (const t of transactionsResult.data ?? []) {
-    balanceMap[t.account_id] = (balanceMap[t.account_id] ?? 0) + Number(t.amount)
-  }
+  const ccMirrorCategoryIds = new Set((ccCategoriesResult.data ?? []).map((c) => c.id))
+  const balanceMap = sumBalancesByAccount(transactionsResult.data ?? [], ccMirrorCategoryIds)
 
   const accounts = (accountsResult.data ?? []).map((a) => ({
     id: a.id,

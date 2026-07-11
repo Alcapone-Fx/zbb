@@ -105,6 +105,8 @@ function FundRow({
 }: FundRowProps) {
   const remaining = monthsRemaining(fund.target_date)
   const contribution = sinkingFundCalc(fund.target_amount, allocated, remaining)
+  const progressPct =
+    fund.target_amount > 0 ? Math.min(100, (allocated / fund.target_amount) * 100) : 0
 
   const isPaid = fund.is_paid
   const isOneTime = fund.recurrence === 'one_time'
@@ -139,6 +141,26 @@ function FundRow({
             )}
             {isPaid && isOneTime && 'Completado'}
           </p>
+
+          {!isPaid && (
+            <div className="mt-1.5">
+              <p className="text-xs font-medium" style={{ color: 'var(--text-main)' }}>
+                Ahorrado ${allocated.toFixed(2)} de ${fund.target_amount.toFixed(2)}{' '}
+                <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>
+                  ({progressPct.toFixed(0)}%)
+                </span>
+              </p>
+              <div
+                className="h-1.5 rounded-full overflow-hidden mt-1"
+                style={{ background: 'var(--bg-app)' }}
+              >
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${progressPct}%`, background: 'var(--ac)' }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">

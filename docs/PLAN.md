@@ -182,7 +182,7 @@
 - **web:** ✅ Account list (On-Budget / Off-Budget groups), create account form, edit name, archive action, net worth totals
 - **db:** ✅ Route Handlers: GET+POST `/api/accounts`, PATCH `/api/accounts/[id]`; CC system category inserted on credit_card account creation
 - **Tests:** ✅ 10 unit tests (buildCreditCardCategoryName × 3, computeNetWorth × 7) — all pass
-- **Migrations:** ⏳ pending — `supabase/migrations/20260705000002_backfill_cc_payment_categories.sql` (data repair, not schema — schema itself is in M00); `supabase/migrations/20260709000002_account_primary_flag.sql` (GitHub #16, `is_primary` flag)
+- **Migrations:** ⏳ pending — `supabase/migrations/20260705000002_backfill_cc_payment_categories.sql` (data repair, not schema — schema itself is in M00); ✅ applied (2026-07-09) — `supabase/migrations/20260709000002_account_primary_flag.sql` (GitHub #16, `is_primary` flag)
 
 #### AI Notes
 > **Migration pending (2026-07-09, GitHub #16):** `20260709000002_account_primary_flag.sql` adds `accounts.is_primary BOOLEAN NOT NULL DEFAULT FALSE`
@@ -312,7 +312,7 @@
 - **web:** ✅ Quick Add form (FAB), transaction history view grouped by category, filters (date range / category / type / tags / account), edit transaction sheet, delete transaction (with transfer-pair handling), CSV export, payee autocomplete
 - **db:** ✅ Route Handlers: GET+POST `/api/transactions`, PATCH+DELETE `/api/transactions/[id]`, GET `/api/transactions/export`, GET `/api/transactions/payees`; transfer pair creation/sync/deletion logic. CC mirror transaction logic **removed 2026-07-10** — see AI Notes below.
 - **Tests:** ✅ 7 unit tests (`applyAmountSign` × 4, `transferLegAmounts` × 3) — `ccMirrorAmount` and its 3 tests removed 2026-07-10 along with the mirror-creation code. Vitest v4 blocked by Windows Application Control policy (native rolldown binary); tests authored and verified by type-check + build
-- **Migrations:** ⏳ pending — `supabase/migrations/20260710000001_remove_cc_mirror_transactions.sql` (data repair, deletes historical mirror rows; schema itself is in M00)
+- **Migrations:** ✅ applied (2026-07-10) — `supabase/migrations/20260710000001_remove_cc_mirror_transactions.sql` (data repair, deletes historical mirror rows; schema itself is in M00)
 
 #### AI Notes
 > **CC mirror transaction removed (2026-07-10, user-reported bug):** The original design (below, kept for
@@ -344,7 +344,7 @@
 > `budget/month/route.ts`, which already had the correct `!isCcMirror` guard) — every credit card purchase
 > was inflating the Dashboard's "Ingresos" figure. Same guard added here.
 >
-> **Historical cleanup:** `20260710000001_remove_cc_mirror_transactions.sql` (pending) deletes the
+> **Historical cleanup:** `20260710000001_remove_cc_mirror_transactions.sql` (✅ applied 2026-07-10) deletes the
 > already-stored synthetic mirror rows precisely — `type='adjustment' AND account_id = (that row's own
 > category's linked_account_id)` plus the exact auto-generated memo prefix as a second guard — so it can
 > never delete a real transaction that merely shares the "Pago · X" category on a different account.
@@ -728,5 +728,5 @@
 | `20260707000001_wishlist_converted_to_fund.sql` | converted_to_fund_id on wishlist_items | main session | ⏳ PENDING |
 | `20260708000001_user_settings_spend_calculators.sql` | grocery/recurring calculator settings | main session | ⏳ PENDING |
 | `20260709000001_wishlist_display_order.sql` | display_order on wishlist_items | main session | ⏳ PENDING |
-| `20260709000002_account_primary_flag.sql` | is_primary flag on accounts (GitHub #16) | main session | ⏳ PENDING |
-| `20260710000001_remove_cc_mirror_transactions.sql` | deletes historical CC "Pago · X" mirror transactions (balance-inflation bug fix) | main session | ⏳ PENDING |
+| `20260709000002_account_primary_flag.sql` | is_primary flag on accounts (GitHub #16) | main session | ✅ applied (2026-07-09) |
+| `20260710000001_remove_cc_mirror_transactions.sql` | deletes historical CC "Pago · X" mirror transactions (balance-inflation bug fix) | main session | ✅ applied (2026-07-10) |

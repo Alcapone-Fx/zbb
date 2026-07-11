@@ -36,7 +36,7 @@ export function computePeriodDateRange(period: DashboardPeriod, now = new Date()
       }
     }
     case 'quarter': {
-      // Last 3 calendar months + current month partial → 3-month window ending today
+      // 3 full calendar months: (current month − 2) through the current month
       const [qy, qm] = toYYYYMM(y, m - 2)
       return {
         from: `${qy}-${pad(qm)}-01`,

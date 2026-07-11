@@ -135,9 +135,15 @@ export async function GET(req: Request) {
       tx.type === 'income' ||
       tx.type === 'opening_balance' ||
       (tx.type === 'adjustment' && amount > 0 && !isCcMirror)
+    // A reconciliation shortfall (negative adjustment) is real spending that
+    // already reduced the account balance and, if categorized, already
+    // reduces that category's Disponible in /budget — count it here too, or
+    // Gastos/group breakdown would silently disagree with the budget page.
+    const countsAsExpense =
+      tx.type === 'expense' || (tx.type === 'adjustment' && amount < 0 && !isCcMirror)
     if (countsAsIncome) {
       net_income += amount
-    } else if (tx.type === 'expense') {
+    } else if (countsAsExpense) {
       total_expense += Math.abs(amount)
       if (tx.category_id) {
         const gid = catGroupMap[tx.category_id]
