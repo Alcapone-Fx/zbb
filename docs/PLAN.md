@@ -501,7 +501,7 @@
 - **Worktree:** wt-m08-budget
 - **web:** ✅ Budget main view (home screen after login), month navigator, "Dinero a Asignar" KPI, category table (Asignado / Actividad / Disponible), inline assign editing, budget template (apply + save), trends panel (side panel per category — 6-month chart)
 - **db:** ✅ GET /api/budget/month (full month data + Disponible + Dinero a Asignar); POST /api/budget/allocations (upsert); GET|PUT /api/budget/template; POST /api/budget/template/apply; GET /api/budget/trends/[categoryId]
-- **Tests:** ✅ 21 unit tests (computeDisponibles × 6, sumReservedDisponible × 5, computeReadyToAssign × 4, getPrevMonth × 2, monthEnd × 4) — `computeDineroAAsignar`'s 4 tests replaced 2026-07-11 along with the function itself; vitest v4 blocked by Windows Application Control (same as M05); tests authored and verified by type-check
+- **Tests:** ✅ 32 unit tests (computeDisponibles × 6, sumReservedDisponible × 5, computeReadyToAssign × 4, getPrevMonth × 2, monthEnd × 4, sumOnBudgetDebt × 8 + KPI regression × 3 in `accounts.test.ts`, added 2026-07-26) — `computeDineroAAsignar`'s 4 tests replaced 2026-07-11 along with the function itself
 - **Migrations:** — (schema in M00; `budget_template` JSONB in `user_settings`)
 
 #### AI Notes
@@ -520,6 +520,15 @@
 > bug caught in review, and the new category-archive guard this required. `primaryAccountAvailable`
 > (`/accounts`' "Disponible para ahorrar/invertir") uses the same `reservedDisponible` against the
 > primary account's own balance instead of the total.
+>
+> **`primaryAccountAvailable` base corrected (2026-07-26):** the primary account's balance alone
+> was **not** a valid base for that shared `reservedDisponible` subtrahend. `reservedDisponible`
+> omits the CC "Pago · X" mirrors on the grounds that card debt is already netted into
+> `totalOnBudgetBalance` — true globally, false for a primary-only base, where a $10 card expense
+> made the KPI go *up* by 10 (less reserved in the spent category, no offsetting debt term).
+> `sumOnBudgetDebt(accounts, primaryAccountId)` (`src/lib/zbb/accounts.ts`) now adds the negative
+> signed balances of the other on-budget accounts back into that base. `dineroAAsignar` unaffected;
+> category-level Disponible unaffected. See `docs/CONVENTIONS.md` 2026-07-26.
 >
 > **"Disponible" formula** (TRD §4.3 — recursive, unchanged by the above):
 > ```

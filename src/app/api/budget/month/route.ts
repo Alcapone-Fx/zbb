@@ -7,7 +7,7 @@ import {
   computeReadyToAssign,
   monthEnd,
 } from '@/lib/zbb/budget'
-import { sumBalancesByAccount, signedAccountBalance } from '@/lib/zbb/accounts'
+import { sumBalancesByAccount, signedAccountBalance, sumOnBudgetDebt } from '@/lib/zbb/accounts'
 import type { BudgetMonthData, BudgetGroupRow, BudgetCategoryRow } from '@/types/budget'
 import type { AccountType } from '@/types/account'
 
@@ -251,9 +251,23 @@ export async function GET(req: Request) {
   // stays global since budget_allocations has no per-account attribution
   // (see docs/CONVENTIONS.md 2026-07-10 entries). Null when no account is
   // marked primary.
+  //
+  // The base, however, can't be the primary balance alone: reservedDisponible
+  // excludes the "Pago · X" mirror categories because card debt is already
+  // netted into totalOnBudgetBalance — true for the global figure, false for a
+  // primary-only base, where unpaid card spending would *raise* the number.
+  // sumOnBudgetDebt puts that debt back in.
+  const onBudgetDebt = sumOnBudgetDebt(
+    onBudgetAccounts.map((a) => ({
+      id: a.id,
+      type: a.type as AccountType,
+      balance: balanceMap[a.id] ?? 0,
+    })),
+    primaryAccountId
+  )
   const primaryAccountAvailable =
     primaryAccountBalance !== null
-      ? computeReadyToAssign(primaryAccountBalance, reservedDisponible)
+      ? computeReadyToAssign(primaryAccountBalance + onBudgetDebt, reservedDisponible)
       : null
 
   // Build response groups
