@@ -41,10 +41,9 @@ interface BudgetRowProps {
   month: string
   onEdit: (categoryId: string, newAmount: number) => void
   onTrends: (categoryId: string) => void
-  isPast: boolean
 }
 
-function BudgetRow({ cat, month, onEdit, onTrends, isPast }: BudgetRowProps) {
+function BudgetRow({ cat, month, onEdit, onTrends }: BudgetRowProps) {
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
   const [saving, setSaving] = useState(false)
@@ -105,14 +104,27 @@ function BudgetRow({ cat, month, onEdit, onTrends, isPast }: BudgetRowProps) {
       <button
         type="button"
         onClick={() => onTrends(cat.id)}
-        className="text-left truncate"
+        className="text-left min-w-0"
       >
         <span
-          className="text-xs font-medium"
+          className="block truncate text-xs font-medium"
           style={{ color: cat.is_system ? 'var(--text-dim)' : 'var(--text-main)' }}
         >
           {cat.name}
         </span>
+        {/* Without this, Disponible looks like it contradicts the two columns
+            next to it: an overspend carried in from last month is the whole
+            difference between assigned − activity and what's actually left. */}
+        {cat.rollover !== 0 && (
+          <span
+            className="block truncate text-[9px] tabular-nums"
+            style={{
+              color: cat.rollover < 0 ? 'var(--color-negative)' : 'var(--text-dim)',
+            }}
+          >
+            Arrastre <MaskedAmount value={formatExact(cat.rollover)} />
+          </span>
+        )}
       </button>
 
       {/* Asignado — editable (non-system) */}
@@ -139,7 +151,11 @@ function BudgetRow({ cat, month, onEdit, onTrends, isPast }: BudgetRowProps) {
       ) : (
         <button
           type="button"
-          disabled={cat.is_system || isPast}
+          // Past months stay editable on purpose: an overspend rolls forward
+          // until it's covered, and the only honest place to cover it is the
+          // month where it happened. /api/budget/allocations accepts any
+          // month, and BudgetClient re-fetches the following ones.
+          disabled={cat.is_system}
           onClick={startEdit}
           className="text-right text-xs font-bold tabular-nums transition-opacity"
           style={{
@@ -182,10 +198,9 @@ interface BudgetGroupProps {
   month: string
   onEdit: (categoryId: string, newAmount: number) => void
   onTrends: (categoryId: string) => void
-  isPast: boolean
 }
 
-function BudgetGroup({ group, month, onEdit, onTrends, isPast }: BudgetGroupProps) {
+function BudgetGroup({ group, month, onEdit, onTrends }: BudgetGroupProps) {
   const [collapsed, setCollapsed] = useState(true)
 
   const totalAssigned = group.categories.reduce((s, c) => s + c.assigned, 0)
@@ -250,14 +265,7 @@ function BudgetGroup({ group, month, onEdit, onTrends, isPast }: BudgetGroupProp
 
       {!collapsed &&
         group.categories.map((cat) => (
-          <BudgetRow
-            key={cat.id}
-            cat={cat}
-            month={month}
-            onEdit={onEdit}
-            onTrends={onTrends}
-            isPast={isPast}
-          />
+          <BudgetRow key={cat.id} cat={cat} month={month} onEdit={onEdit} onTrends={onTrends} />
         ))}
     </div>
   )
@@ -268,10 +276,9 @@ interface Props {
   month: string
   onEdit: (categoryId: string, newAmount: number) => void
   onTrends: (categoryId: string) => void
-  isPast: boolean
 }
 
-export function BudgetTable({ groups, month, onEdit, onTrends, isPast }: Props) {
+export function BudgetTable({ groups, month, onEdit, onTrends }: Props) {
   return (
     <div>
       {/* Column headers */}
@@ -312,7 +319,6 @@ export function BudgetTable({ groups, month, onEdit, onTrends, isPast }: Props) 
           month={month}
           onEdit={onEdit}
           onTrends={onTrends}
-          isPast={isPast}
         />
       ))}
     </div>

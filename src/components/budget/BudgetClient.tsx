@@ -184,7 +184,7 @@ export function BudgetClient({ initialMonth, initialData }: Props) {
           className="mx-5 mb-3 px-3 py-2 rounded-xl text-xs"
           style={{ background: 'rgba(255,200,0,0.08)', color: 'var(--text-sub)' }}
         >
-          Editando un mes pasado. Los cambios actualizan los rollovers de los meses siguientes al navegar.
+          Estás en un mes pasado. Puedes asignar aquí para cubrir un sobregiro que se está arrastrando; los meses siguientes se recalculan al navegar.
         </div>
       )}
 
@@ -205,7 +205,6 @@ export function BudgetClient({ initialMonth, initialData }: Props) {
             month={month}
             onEdit={handleEdit}
             onTrends={(catId) => setTrendsCategory(catId)}
-            isPast={past}
           />
         </div>
       )}

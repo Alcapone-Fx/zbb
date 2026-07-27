@@ -6,8 +6,12 @@ import {
   sumReservedDisponible,
   computeReadyToAssign,
   monthEnd,
+  monthRange,
+  getPrevMonth,
 } from '@/lib/zbb/budget'
 import { sumBalancesByAccount, signedAccountBalance, sumOnBudgetDebt } from '@/lib/zbb/accounts'
+import { computeCcPaymentActivity } from '@/lib/zbb/credit-cards'
+import type { CcTransaction } from '@/lib/zbb/credit-cards'
 import type { BudgetMonthData, BudgetGroupRow, BudgetCategoryRow } from '@/types/budget'
 import type { AccountType } from '@/types/account'
 
@@ -56,12 +60,13 @@ export async function GET(req: Request) {
   }
 
   const allMonths = allMonthsData ?? []
-  const sortedMonths = allMonths.map((m) => m.month)
-  const monthIdByMonth: Record<string, string> = {}
-  for (const m of allMonths) monthIdByMonth[m.month] = m.id
-
   const budgetMonthIds = allMonths.map((m) => m.id)
-  const earliestMonth = sortedMonths[0] ?? targetMonth
+  // The upsert above guarantees at least the target month's row exists.
+  const earliestMonth = allMonths[0]?.month ?? targetMonth
+  // Contiguous, NOT just the months holding a budget_months row: a month the
+  // user never opened has no row, and computeDisponibles would skip straight
+  // over it, dropping its activity from every category's rollover.
+  const sortedMonths = monthRange(earliestMonth, targetMonth)
 
   // Parallel: groups+cats, on-budget accounts, allocations
   const [groupsRes, catsRes, accountsRes, allocsRes] = await Promise.all([
@@ -144,9 +149,13 @@ export async function GET(req: Request) {
           // earliest budget_months row, or that money is invisible forever.
           // Capped at the same dateTo as the activity query above so a
           // past-month view stays consistent with that month's Disponible.
+          //
+          // It also feeds computeCcPaymentActivity, for the same reason: a card
+          // added with debt already on it must still produce a payment
+          // obligation, however far back its opening_balance is dated.
           supabase
             .from('transactions')
-            .select('account_id, category_id, amount, type')
+            .select('account_id, category_id, amount, type, date')
             .eq('user_id', user.id)
             .in('account_id', onBudgetIds)
             .lte('date', dateTo),
@@ -186,32 +195,22 @@ export async function GET(req: Request) {
     }
   }
 
-  // CC payment tracking: for each category linked to a CC account, inject activity
-  // = -(net of expense + transfer amounts on that CC account for the month).
-  // Spending on CC (negative expense) → payment category gets positive activity (owed).
-  // Transfer to CC (positive) → payment category gets negative activity (paid).
-  const ccPaymentCats = allCats.filter((c) => c.linked_account_id)
-  if (ccPaymentCats.length > 0) {
-    // Build per-CC-account net activity map: month → accountId → sum(amount)
-    const ccAcctMap: Record<string, Record<string, number>> = {}
-    for (const tx of allTx) {
-      if (tx.type !== 'expense' && tx.type !== 'transfer') continue
-      const txMonth = tx.date.slice(0, 7)
-      if (txMonth < earliestMonth || txMonth > targetMonth) continue
-      const acctId = tx.account_id
-      if (!acctId) continue
-      if (!ccAcctMap[txMonth]) ccAcctMap[txMonth] = {}
-      ccAcctMap[txMonth][acctId] = (ccAcctMap[txMonth][acctId] ?? 0) + Number(tx.amount)
-    }
-    // Inject payment category activity: negative net CC amount = amount owed
-    for (const cat of ccPaymentCats) {
-      const linkedId = cat.linked_account_id!
-      for (const month of sortedMonths) {
-        const netCC = ccAcctMap[month]?.[linkedId] ?? 0
-        if (netCC === 0) continue
-        if (!activitiesMap[month]) activitiesMap[month] = {}
-        activitiesMap[month][cat.id] = (activitiesMap[month][cat.id] ?? 0) + -netCC
-      }
+  // CC payment tracking: each "Pago · X" category mirrors the negated net
+  // change of its linked card's balance, so its Disponible tracks what's owed
+  // on that card. Fed from the unbounded balance query rather than allTx —
+  // see computeCcPaymentActivity for why every transaction type counts.
+  const ccPaymentActivity = computeCcPaymentActivity(
+    (balanceTxQuery.data ?? []) as CcTransaction[],
+    allCats
+      .filter((c) => c.linked_account_id)
+      .map((c) => ({ id: c.id, linked_account_id: c.linked_account_id! })),
+    sortedMonths,
+    ccMirrorCategoryIds
+  )
+  for (const [month, byCategory] of Object.entries(ccPaymentActivity)) {
+    if (!activitiesMap[month]) activitiesMap[month] = {}
+    for (const [catId, amount] of Object.entries(byCategory)) {
+      activitiesMap[month][catId] = (activitiesMap[month][catId] ?? 0) + amount
     }
   }
 
@@ -273,6 +272,11 @@ export async function GET(req: Request) {
   // Build response groups
   const targetAllocations = allocationsMap[targetMonth] ?? {}
   const targetActivities = activitiesMap[targetMonth] ?? {}
+  // Carried in from last month. Sent explicitly so the UI can explain a
+  // Disponible that doesn't equal assigned + activity — an overspend that
+  // rolls forward is otherwise an unexplained gap in the row. Empty for the
+  // first month of the chain, which has nothing before it.
+  const rollovers = allDisponibles[getPrevMonth(targetMonth)] ?? {}
 
   const catsByGroup: Record<string, BudgetCategoryRow[]> = {}
   for (const cat of allCats) {
@@ -284,6 +288,7 @@ export async function GET(req: Request) {
       display_order: cat.display_order,
       assigned: targetAllocations[cat.id] ?? 0,
       activity: targetActivities[cat.id] ?? 0,
+      rollover: rollovers[cat.id] ?? 0,
       disponible: targetDisponibles[cat.id] ?? 0,
     })
   }

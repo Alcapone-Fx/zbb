@@ -5,6 +5,7 @@ import {
   computeReadyToAssign,
   getPrevMonth,
   monthEnd,
+  monthRange,
 } from '../budget'
 
 describe('computeDisponibles', () => {
@@ -186,5 +187,77 @@ describe('monthEnd', () => {
   })
   it('February leap year', () => {
     expect(monthEnd('2024-02')).toBe('2024-02-29')
+  })
+})
+
+describe('monthRange', () => {
+  it('single month', () => {
+    expect(monthRange('2026-07', '2026-07')).toEqual(['2026-07'])
+  })
+
+  it('consecutive months', () => {
+    expect(monthRange('2026-05', '2026-08')).toEqual([
+      '2026-05',
+      '2026-06',
+      '2026-07',
+      '2026-08',
+    ])
+  })
+
+  it('crosses a year boundary', () => {
+    expect(monthRange('2025-11', '2026-02')).toEqual([
+      '2025-11',
+      '2025-12',
+      '2026-01',
+      '2026-02',
+    ])
+  })
+
+  it('returns nothing when from is after to', () => {
+    expect(monthRange('2026-08', '2026-07')).toEqual([])
+  })
+
+  it('covering an overspend in the month it happened clears the next month', () => {
+    // Reported case: 132.10 spent on a card in June against a zero
+    // assignment, so July showed 451 assigned − 419.90 spent = −101 rather
+    // than 31.10. The gap IS the rollover, which is why the row now shows it.
+    const months = monthRange('2026-06', '2026-07')
+    const activity = { '2026-06': { super: -132.1 }, '2026-07': { super: -419.9 } }
+
+    const uncovered = computeDisponibles(
+      months,
+      { '2026-06': { super: 0 }, '2026-07': { super: 451 } },
+      activity,
+      ['super']
+    )
+    const rollover = uncovered['2026-06'].super
+    expect(rollover).toBeCloseTo(-132.1, 8)
+    expect(uncovered['2026-07'].super).toBeCloseTo(451 + rollover - 419.9, 8)
+    expect(uncovered['2026-07'].super).toBeCloseTo(-101, 8)
+
+    // Assigning to the past month — now reachable from the UI — is what
+    // actually clears it, rather than over-assigning in July.
+    const covered = computeDisponibles(
+      months,
+      { '2026-06': { super: 132.1 }, '2026-07': { super: 451 } },
+      activity,
+      ['super']
+    )
+    expect(covered['2026-06'].super).toBeCloseTo(0, 8)
+    expect(covered['2026-07'].super).toBeCloseTo(31.1, 8)
+  })
+
+  it('fills a month the user never opened, so its activity still rolls forward', () => {
+    // June has no budget_months row — with the old "months that have a row"
+    // list, computeDisponibles skipped it and its spending vanished.
+    const months = monthRange('2026-05', '2026-07')
+    const result = computeDisponibles(
+      months,
+      { '2026-05': { cat: 500 } },
+      { '2026-06': { cat: -120 } },
+      ['cat']
+    )
+    expect(months).toContain('2026-06')
+    expect(result['2026-07'].cat).toBe(380)
   })
 })

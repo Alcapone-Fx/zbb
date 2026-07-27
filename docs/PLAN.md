@@ -501,7 +501,7 @@
 - **Worktree:** wt-m08-budget
 - **web:** ✅ Budget main view (home screen after login), month navigator, "Dinero a Asignar" KPI, category table (Asignado / Actividad / Disponible), inline assign editing, budget template (apply + save), trends panel (side panel per category — 6-month chart)
 - **db:** ✅ GET /api/budget/month (full month data + Disponible + Dinero a Asignar); POST /api/budget/allocations (upsert); GET|PUT /api/budget/template; POST /api/budget/template/apply; GET /api/budget/trends/[categoryId]
-- **Tests:** ✅ 32 unit tests (computeDisponibles × 6, sumReservedDisponible × 5, computeReadyToAssign × 4, getPrevMonth × 2, monthEnd × 4, sumOnBudgetDebt × 8 + KPI regression × 3 in `accounts.test.ts`, added 2026-07-26) — `computeDineroAAsignar`'s 4 tests replaced 2026-07-11 along with the function itself
+- **Tests:** ✅ 54 unit tests (computeDisponibles × 6, sumReservedDisponible × 5, computeReadyToAssign × 4, getPrevMonth × 2, monthEnd × 4, monthRange × 6 incl. the −101 overspend regression, sumOnBudgetDebt × 8 + KPI regression × 3 in `accounts.test.ts`, computeCcPaymentActivity × 14 + card-debt invariant × 2 in `credit-cards.test.ts`, added 2026-07-26) — `computeDineroAAsignar`'s 4 tests replaced 2026-07-11 along with the function itself
 - **Migrations:** — (schema in M00; `budget_template` JSONB in `user_settings`)
 
 #### AI Notes
@@ -529,6 +529,29 @@
 > `sumOnBudgetDebt(accounts, primaryAccountId)` (`src/lib/zbb/accounts.ts`) now adds the negative
 > signed balances of the other on-budget accounts back into that base. `dineroAAsignar` unaffected;
 > category-level Disponible unaffected. See `docs/CONVENTIONS.md` 2026-07-26.
+>
+> **CC "Pago · X" activity now tracks the card's real balance (2026-07-26):** extracted from the
+> inline `ccAcctMap` into `computeCcPaymentActivity` (`src/lib/zbb/credit-cards.ts`). The invariant
+> is *mirror category Disponible == the card's outstanding debt*, so **every** transaction type
+> that moves the card's balance counts — not just `expense`/`transfer`. The old filter broke it for
+> a card created with debt (`opening_balance`, closing the caveat noted in the entry above: paying
+> that debt drove "Pago · X" permanently red), for refunds posted to the card (`income`), and for
+> reconciliation shortfalls (`adjustment`). Exclusion rule is now identical to
+> `sumBalancesByAccount`'s, which is what keeps the two in lockstep. No KPI moves —
+> `sumReservedDisponible` excludes mirror categories either way.
+>
+> **Rollover chain is contiguous (2026-07-26):** `sortedMonths` came from the `budget_months` rows
+> themselves, but those are created lazily, so a month the user never opened was skipped entirely
+> and its activity vanished from every category's rollover. Now `monthRange(earliestMonth,
+> targetMonth)`.
+>
+> **Past months are editable + `rollover` is exposed (2026-07-26):** user hit a row reading
+> `451 / −420 / −101`, the gap being a −132.10 overspend carried in. The row now shows
+> "Arrastre −132.10" under the category name (`BudgetCategoryRow.rollover`), and the `isPast` lock
+> on the Asignado cell is gone — the API never restricted month and `handleEdit` already had an
+> unreachable past-month branch, so covering an overspend in the month it happened now works.
+> Absorbing overspend and resetting to 0 each month was considered and rejected by the user; see
+> `docs/CONVENTIONS.md` 2026-07-26 for why it would have been arithmetically safe but lossy.
 >
 > **"Disponible" formula** (TRD §4.3 — recursive, unchanged by the above):
 > ```

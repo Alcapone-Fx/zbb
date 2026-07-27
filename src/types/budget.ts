@@ -19,6 +19,7 @@ export interface BudgetCategoryRow {
   display_order: number
   assigned: number
   activity: number    // signed sum of tx amounts (negative = net spending)
+  rollover: number    // last month's Disponible, carried in (0 in the first month)
   disponible: number  // assigned + rollover + activity
 }
 

@@ -83,6 +83,35 @@ export function getPrevMonth(month: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+/**
+ * Every month from `from` through `to` inclusive, as YYYY-MM. Returns [] when
+ * `from` is after `to`.
+ *
+ * The rollover chain must be walked over a CONTIGUOUS range, not just the
+ * months that happen to have a `budget_months` row. A row is only created when
+ * the user opens a month or assigns money in it, so skipping a month leaves a
+ * gap — and computeDisponibles never visits it, silently dropping that month's
+ * activity from every category's Disponible.
+ */
+export function monthRange(from: string, to: string): string[] {
+  const [fromYear, fromMonth] = from.split('-').map(Number)
+  const [toYear, toMonth] = to.split('-').map(Number)
+  const months: string[] = []
+  let year = fromYear
+  let month = fromMonth
+
+  while (year < toYear || (year === toYear && month <= toMonth)) {
+    months.push(`${year}-${String(month).padStart(2, '0')}`)
+    month += 1
+    if (month > 12) {
+      month = 1
+      year += 1
+    }
+  }
+
+  return months
+}
+
 /** Returns the last date of a YYYY-MM month as YYYY-MM-DD. */
 export function monthEnd(month: string): string {
   const [y, m] = month.split('-').map(Number)
