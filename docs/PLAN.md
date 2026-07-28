@@ -770,4 +770,5 @@
 | `20260709000001_wishlist_display_order.sql` | display_order on wishlist_items | main session | ⏳ PENDING |
 | `20260709000002_account_primary_flag.sql` | is_primary flag on accounts (GitHub #16) | main session | ✅ applied (2026-07-09) |
 | `20260710000001_remove_cc_mirror_transactions.sql` | deletes historical CC "Pago · X" mirror transactions (balance-inflation bug fix) | main session | ✅ applied (2026-07-10) |
-| `20260727000001_strip_category_from_onbudget_transfers.sql` | data repair: clears the category on transfers between two on-budget accounts (phantom-spending / inflated "Dinero a Asignar" bug) | main session | ⏳ PENDING |
+| `20260727000001_strip_category_from_onbudget_transfers.sql` | data repair: clears the category on transfers between two on-budget accounts (phantom-spending / inflated "Dinero a Asignar" bug) | main session | ✅ applied (2026-07-27) |
+| `20260727000002_handle_new_user_trigger.sql` | attaches `handle_new_user()` as a real trigger on `auth.users` (the "Database Webhook" step was never possible), makes it idempotent, backfills existing users | main session | ⏳ PENDING |
