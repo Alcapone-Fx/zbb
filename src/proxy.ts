@@ -4,6 +4,19 @@ import type { NextRequest } from 'next/server'
 
 const AUTH_PAGES = ['/login', '/register', '/forgot-password', '/verify-email']
 
+// Landing routes for the links Supabase emails out. Exempt from BOTH guards
+// below, for opposite reasons:
+//   - /auth/confirm is reached with NO session yet, so the `!user` redirect
+//     would bounce it to /login and the token_hash would never reach
+//     verifyOtp() — leaving the account permanently unconfirmed, with no
+//     resend button on /verify-email to recover from it.
+//   - /auth/reset-password IS reached with a (recovery) session, so the
+//     "redirect verified users away from auth pages" rule would bounce it to
+//     /budget before the user can set a new password.
+// Neither route renders anything an unauthenticated visitor shouldn't see:
+// both are inert without a valid one-time token.
+const AUTH_CALLBACK_ROUTES = ['/auth/confirm', '/auth/reset-password']
+
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -34,6 +47,13 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
+
+  // Checked before every other rule — but after getUser() above, so the
+  // response still carries any refreshed session cookies.
+  if (AUTH_CALLBACK_ROUTES.some((p) => pathname === p)) {
+    return supabaseResponse
+  }
+
   const isAuthPage = AUTH_PAGES.some((p) => pathname === p)
   // API routes handle auth themselves — proxy only covers page navigation
   const isApiRoute = pathname.startsWith('/api/')
