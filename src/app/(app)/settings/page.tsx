@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ChevronRight, Tag, Target } from 'lucide-react'
 import { LogoutButton } from '@/components/shared/LogoutButton'
+import { DemoDataSection } from '@/components/settings/DemoDataSection'
 
 export default function SettingsPage() {
   return (
@@ -72,6 +73,14 @@ export default function SettingsPage() {
           </div>
           <ChevronRight size={16} style={{ color: 'var(--text-sub)' }} />
         </Link>
+
+        {/* Divider */}
+        <div
+          className="my-1"
+          style={{ height: '1px', background: 'var(--border-section)' }}
+        />
+
+        <DemoDataSection />
 
         {/* Divider */}
         <div
