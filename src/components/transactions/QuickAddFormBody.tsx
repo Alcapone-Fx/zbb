@@ -132,6 +132,24 @@ export function QuickAddFormBody({ onClose }: Props) {
     Promise.resolve().then(() => setCategoryId(ccPaymentCategory.id));
   }, [ccPaymentCategory]);
 
+  // A transfer only touches the budget when exactly one side is on-budget.
+  // Between two on-budget accounts the money just changes location, so asking
+  // for a category invites phantom spending: only the source leg would carry it
+  // and nothing offsets it. Mirrors transferNeedsCategory on the server.
+  const transferNeedsCat =
+    type === "transfer" &&
+    !!selectedAccount &&
+    !!transferDestAccount &&
+    selectedAccount.is_tracking_only !== transferDestAccount.is_tracking_only;
+
+  const showTransferCategory =
+    type === "transfer" && (transferNeedsCat || !!ccPaymentCategory);
+
+  useEffect(() => {
+    if (type !== "transfer" || showTransferCategory) return;
+    Promise.resolve().then(() => setCategoryId(""));
+  }, [type, showTransferCategory]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -367,14 +385,15 @@ export function QuickAddFormBody({ onClose }: Props) {
         </div>
       )}
 
-      {/* Transfer + on-budget category */}
-      {type === "transfer" && (
+      {/* Transfer category — only when the money actually enters or leaves the
+          budget, or when it's a card payment (see showTransferCategory). */}
+      {showTransferCategory && (
         <div className="flex flex-col gap-1.5">
           <label
             className="text-xs font-semibold uppercase tracking-wide"
             style={{ color: "var(--text-dim)" }}
           >
-            Categoría (si alguna cuenta está en presupuesto)
+            Categoría
           </label>
           {ccPaymentCategory ? (
             <div

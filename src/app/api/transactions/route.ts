@@ -6,7 +6,11 @@ import {
 } from '@/types/transaction'
 import type { TransactionWithDetails } from '@/types/transaction'
 import type { AccountType } from '@/types/account'
-import { applyAmountSign, transferLegAmounts } from '@/lib/zbb/transactions'
+import {
+  applyAmountSign,
+  transferLegAmounts,
+  transferNeedsCategory,
+} from '@/lib/zbb/transactions'
 
 export async function GET(req: Request) {
   const supabase = await createClient()
@@ -166,12 +170,45 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Cuenta de destino no encontrada' }, { status: 404 })
     }
 
-    const eitherOnBudget = !account.is_tracking_only || !destAccount.is_tracking_only
-    if (eitherOnBudget && !category_id) {
+    const needsCategory = transferNeedsCategory(
+      account.is_tracking_only,
+      destAccount.is_tracking_only
+    )
+
+    if (needsCategory && !category_id) {
       return NextResponse.json(
-        { error: 'La categoría es requerida cuando una cuenta está en presupuesto' },
+        { error: 'La categoría es requerida cuando solo una de las cuentas está en presupuesto' },
         { status: 400 }
       )
+    }
+
+    let transferCategoryId: string | null = category_id ?? null
+
+    if (transferCategoryId) {
+      const { data: cat, error: catErr } = await supabase
+        .from('categories')
+        .select('id, linked_account_id')
+        .eq('id', transferCategoryId)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (catErr) {
+        console.error('POST /api/transactions transfer category lookup error', catErr)
+        return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+      }
+      if (!cat) {
+        return NextResponse.json({ error: 'Categoría no encontrada' }, { status: 404 })
+      }
+
+      // Budget-neutral transfer: strip the category rather than reject it. The
+      // only one worth keeping is the card's own "Pago · X", which is excluded
+      // from the activity sum and so can't create phantom spending.
+      if (!needsCategory) {
+        const isCardPayment =
+          cat.linked_account_id === account_id ||
+          cat.linked_account_id === transfer_to_account_id
+        if (!isCardPayment) transferCategoryId = null
+      }
     }
 
     const { sourceLegAmount, destLegAmount } = transferLegAmounts(
@@ -186,7 +223,7 @@ export async function POST(req: Request) {
       .insert({
         user_id: user.id,
         account_id,
-        category_id: category_id ?? null,
+        category_id: transferCategoryId,
         amount: sourceLegAmount,
         date,
         type: 'transfer',

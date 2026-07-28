@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { updateTransactionSchema } from '@/types/transaction'
+import { transferNeedsCategory } from '@/lib/zbb/transactions'
 
 export async function PATCH(
   req: Request,
@@ -32,7 +33,7 @@ export async function PATCH(
   // Verify ownership and fetch current type/amount
   const { data: existing, error: fetchErr } = await supabase
     .from('transactions')
-    .select('id, type, amount, transfer_pair_id, is_reconciled')
+    .select('id, type, amount, account_id, transfer_pair_id, is_reconciled')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
@@ -48,7 +49,62 @@ export async function PATCH(
   // Transfers have a paired leg on another account — moving just one side
   // would desync the pair, so account changes are only applied to non-transfers.
   if (account_id !== undefined && existing.type !== 'transfer') updates.account_id = account_id
-  if (category_id !== undefined) updates.category_id = category_id
+  if (category_id !== undefined) {
+    let nextCategoryId: string | null = category_id
+
+    // A transfer between two on-budget accounts is budget-neutral and must not
+    // carry a category (see transferNeedsCategory). Without this check the edit
+    // path silently reintroduces the phantom spending that POST now prevents.
+    if (existing.type === 'transfer' && nextCategoryId) {
+      let pairAccountId: string | null = null
+      if (existing.transfer_pair_id) {
+        const { data: pair } = await supabase
+          .from('transactions')
+          .select('account_id')
+          .eq('id', existing.transfer_pair_id)
+          .eq('user_id', user.id)
+          .maybeSingle()
+        pairAccountId = pair?.account_id ?? null
+      }
+
+      const accountIds = [existing.account_id, pairAccountId].filter(
+        (v): v is string => typeof v === 'string'
+      )
+
+      const { data: accs, error: accsErr } = await supabase
+        .from('accounts')
+        .select('id, is_tracking_only')
+        .eq('user_id', user.id)
+        .in('id', accountIds)
+
+      if (accsErr) {
+        console.error('PATCH /api/transactions/[id] account lookup error', accsErr)
+        return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+      }
+
+      // Only enforceable when both legs resolve; an orphaned leg can't be judged.
+      if (accs && accs.length === 2) {
+        const needsCategory = transferNeedsCategory(
+          accs[0].is_tracking_only,
+          accs[1].is_tracking_only
+        )
+        if (!needsCategory) {
+          const { data: cat } = await supabase
+            .from('categories')
+            .select('linked_account_id')
+            .eq('id', nextCategoryId)
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          const isCardPayment =
+            !!cat?.linked_account_id && accountIds.includes(cat.linked_account_id)
+          if (!isCardPayment) nextCategoryId = null
+        }
+      }
+    }
+
+    updates.category_id = nextCategoryId
+  }
   if (payee !== undefined) updates.payee = payee
   if (memo !== undefined) updates.memo = memo
   if (tags !== undefined) updates.tags = tags
