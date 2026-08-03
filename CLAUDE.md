@@ -46,6 +46,7 @@ npx supabase stop    # Stop local Supabase stack
 - Generate the SQL file, mark as **pending** in docs/PLAN.md
 - The dev reviews and runs it manually via `supabase db push` or Supabase dashboard
 - Reason: concurrent worktrees touching the schema cause unrecoverable conflicts
+- You can run SELECT/read queries for debugging
 
 ### Security
 - Auth check on every Route Handler — verify user via `supabase.auth.getUser()`

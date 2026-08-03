@@ -37,6 +37,11 @@
 /supabase/.temp
 /.supabase
 
+# one-off data scripts scoped to a single account (filtered by email, depend on
+# that person's accounts/categories). Not migrations — db push never runs them,
+# and they'd be meaningless on any other database.
+/supabase/oneoff/
+
 # ui reference screenshots (local only — used by agents but not committed)
 /docs/ui-reference/
 
