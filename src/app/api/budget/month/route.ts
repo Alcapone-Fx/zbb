@@ -9,7 +9,7 @@ import {
   monthRange,
   getPrevMonth,
 } from '@/lib/zbb/budget'
-import { sumBalancesByAccount, signedAccountBalance, sumOnBudgetDebt } from '@/lib/zbb/accounts'
+import { sumBalancesByAccount, signedAccountBalance } from '@/lib/zbb/accounts'
 import { computeCcPaymentActivity } from '@/lib/zbb/credit-cards'
 import type { CcTransaction } from '@/lib/zbb/credit-cards'
 import type { BudgetMonthData, BudgetGroupRow, BudgetCategoryRow } from '@/types/budget'
@@ -85,7 +85,7 @@ export async function GET(req: Request) {
 
     supabase
       .from('accounts')
-      .select('id, is_primary, type')
+      .select('id, type')
       .eq('user_id', user.id)
       .eq('is_tracking_only', false)
       .eq('is_archived', false),
@@ -107,7 +107,6 @@ export async function GET(req: Request) {
   const allCats = catsRes.data ?? []
   const categoryIds = allCats.map((c) => c.id)
   const onBudgetIds = (accountsRes.data ?? []).map((a) => a.id)
-  const primaryAccountId = (accountsRes.data ?? []).find((a) => a.is_primary)?.id ?? null
 
   // CC "Pago · X" categories get their activity computed synthetically below
   // (from the linked account's real expense/transfer net) — the literal mirror
@@ -236,38 +235,14 @@ export async function GET(req: Request) {
       sum + signedAccountBalance({ type: a.type as AccountType, balance: balanceMap[a.id] ?? 0 }),
     0
   )
-  const primaryAccount = onBudgetAccounts.find((a) => a.id === primaryAccountId)
-  const primaryAccountBalance = primaryAccount
-    ? signedAccountBalance({
-        type: primaryAccount.type as AccountType,
-        balance: balanceMap[primaryAccount.id] ?? 0,
-      })
-    : null
-
   const reservedDisponible = sumReservedDisponible(targetDisponibles, categoryIds, ccMirrorCategoryIds)
+  // Also the headline of "Disponible para ahorrar/invertir" on /accounts. The
+  // two are one quantity — on-budget cash nobody has claimed yet — framed as a
+  // chore in /budget and as an opportunity in /accounts; /accounts adds a
+  // liquidity line beside it saying how much of it sits in the primary
+  // account. It used to compute its own primary-scoped variant, which could
+  // not be made correct: see docs/CONVENTIONS.md 2026-08-02.
   const dineroAAsignar = computeReadyToAssign(totalOnBudgetBalance, reservedDisponible)
-  // Same reservedDisponible subtrahend as the global figure — "asignado"
-  // stays global since budget_allocations has no per-account attribution
-  // (see docs/CONVENTIONS.md 2026-07-10 entries). Null when no account is
-  // marked primary.
-  //
-  // The base, however, can't be the primary balance alone: reservedDisponible
-  // excludes the "Pago · X" mirror categories because card debt is already
-  // netted into totalOnBudgetBalance — true for the global figure, false for a
-  // primary-only base, where unpaid card spending would *raise* the number.
-  // sumOnBudgetDebt puts that debt back in.
-  const onBudgetDebt = sumOnBudgetDebt(
-    onBudgetAccounts.map((a) => ({
-      id: a.id,
-      type: a.type as AccountType,
-      balance: balanceMap[a.id] ?? 0,
-    })),
-    primaryAccountId
-  )
-  const primaryAccountAvailable =
-    primaryAccountBalance !== null
-      ? computeReadyToAssign(primaryAccountBalance + onBudgetDebt, reservedDisponible)
-      : null
 
   // Build response groups
   const targetAllocations = allocationsMap[targetMonth] ?? {}
@@ -305,7 +280,6 @@ export async function GET(req: Request) {
   const responseData: BudgetMonthData = {
     month: targetMonth,
     dineroAAsignar,
-    primaryAccountAvailable,
     groups,
   }
 

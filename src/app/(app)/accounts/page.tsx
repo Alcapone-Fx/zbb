@@ -10,6 +10,7 @@ import { CreateAccountModal } from "@/components/accounts/CreateAccountModal";
 import { EditAccountModal } from "@/components/accounts/EditAccountModal";
 import { ReconciliationSheet } from "@/components/accounts/ReconciliationSheet";
 import { MaskedAmount } from "@/components/shared/MaskedAmount";
+import { signedAccountBalance, sumOnBudgetDebt } from "@/lib/zbb/accounts";
 import { useRefreshStore } from "@/stores/refresh.store";
 
 function formatCurrency(amount: number): string {
@@ -45,7 +46,7 @@ function computeMiniStats(data: AccountsResponse) {
 export default function AccountsPage() {
   const transactionsVersion = useRefreshStore((s) => s.transactionsVersion);
   const [data, setData] = useState<AccountsResponse | null>(null);
-  const [primaryAvailable, setPrimaryAvailable] = useState<number | null>(null);
+  const [availableToSave, setAvailableToSave] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -70,7 +71,7 @@ export default function AccountsPage() {
       }
       if (budgetRes.ok) {
         const budgetJson = await budgetRes.json();
-        setPrimaryAvailable(budgetJson.data?.primaryAccountAvailable ?? null);
+        setAvailableToSave(budgetJson.data?.dineroAAsignar ?? null);
       }
     } catch {
       setApiError("Error de conexión");
@@ -101,6 +102,21 @@ export default function AccountsPage() {
   const netWorthNegative = netWorth < 0;
   const stats = data ? computeMiniStats(data) : null;
   const primaryAccount = data?.on_budget.find((a) => a.is_primary) ?? null;
+  // Liquidity qualifier for the KPI, computed here rather than in the API: the
+  // page already holds every on-budget balance, and the headline figure is
+  // global on purpose (see AvailableToSaveKPI's props). Cash reachable today =
+  // the primary account's own balance, less what the other on-budget accounts
+  // owe — that debt has to come out of this same cash.
+  const liquidCash =
+    data && primaryAccount
+      ? signedAccountBalance(primaryAccount) + sumOnBudgetDebt(data.on_budget, primaryAccount.id)
+      : null;
+  const otherFundedAccounts =
+    data && primaryAccount
+      ? data.on_budget
+          .filter((a) => a.id !== primaryAccount.id && signedAccountBalance(a) > 0)
+          .map((a) => a.name)
+      : [];
 
   if (loading) {
     return (
@@ -219,16 +235,13 @@ export default function AccountsPage() {
       </div>
 
       {/* ── Disponible para ahorrar/invertir ── */}
-      {!loading && primaryAccount && primaryAvailable !== null && (
-        <AvailableToSaveKPI amount={primaryAvailable} primaryAccountName={primaryAccount.name} />
-      )}
-      {!loading && !primaryAccount && (
-        <p
-          className="mx-5 mb-3 text-xs"
-          style={{ color: "var(--text-dim)" }}
-        >
-          Marca tu cuenta principal (editar cuenta) para ver aquí cuánto tienes disponible para ahorrar o invertir.
-        </p>
+      {!loading && availableToSave !== null && (
+        <AvailableToSaveKPI
+          amount={availableToSave}
+          liquidCash={liquidCash}
+          primaryAccountName={primaryAccount?.name ?? null}
+          otherFundedAccounts={otherFundedAccounts}
+        />
       )}
 
       {/* ── Account groups ── */}

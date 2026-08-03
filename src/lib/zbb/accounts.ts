@@ -29,18 +29,21 @@ export function computeNetWorth(accounts: AccountWithBalance[]): number {
  * Debt held in on-budget accounts other than `excludeAccountId`, as a
  * NEGATIVE number (0 when there is none).
  *
- * Only used by "Disponible para ahorrar/invertir", whose base is the primary
- * account's balance alone. The global "Dinero a Asignar" needs nothing like
- * this: its base (`totalOnBudgetBalance`) already nets every credit card's
- * negative balance, which is exactly why `sumReservedDisponible` drops the
- * "Pago · X" mirror categories. A primary-only base sees none of that debt,
- * so with the same subtrahend an unpaid card expense would *raise* the
- * figure — the expense lowers its category's Disponible (less money reserved)
- * without touching the primary account's cash. The card still has to be paid
- * out of that cash, so net the debt back in.
+ * Used only for the liquidity line under "Disponible para ahorrar/invertir"
+ * (`/accounts`): "of the money you have free, this much is reachable from your
+ * primary account today". Primary balance + this = cash you can actually move,
+ * since whatever the other on-budget accounts owe has to be paid out of it.
+ *
+ * It is deliberately NOT part of any budget total. Until 2026-08-02 the KPI
+ * itself was built on `primaryBalance + sumOnBudgetDebt(...)` as a base against
+ * the *global* reserved sum — a mix of scopes that under-reported by every
+ * peso of on-budget cash held outside the primary account. The headline is now
+ * the global figure; see docs/CONVENTIONS.md 2026-08-02.
  *
  * Only negative signed balances count: a positive credit card balance is an
  * overpayment parked on the card, not cash available in the primary account.
+ * Positive balances of other cash accounts are surfaced separately (as "the
+ * rest is in X and Y"), never folded into this number.
  */
 export function sumOnBudgetDebt(
   accounts: { id: string; type: AccountWithBalance['type']; balance: number }[],

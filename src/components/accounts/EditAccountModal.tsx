@@ -348,8 +348,8 @@ export function EditAccountModal({ account, onClose, onSaved, onArchive, onRecon
             </div>
             <p className="text-xs" style={{ color: "var(--text-sub)" }}>
               {isPrimary
-                ? "Esta es tu cuenta principal — en Cuentas verás cuánto tienes disponible para ahorrar o invertir."
-                : "Márcala como tu cuenta de operaciones principal para ver ahí cuánto te queda disponible para ahorrar o invertir."}
+                ? "Esta es tu cuenta principal — en Cuentas te decimos cuánto de tu dinero disponible está a la mano aquí."
+                : "Márcala como tu cuenta de operaciones principal para saber, en Cuentas, cuánto de tu dinero disponible puedes mover desde aquí hoy."}
             </p>
           </div>
         )}

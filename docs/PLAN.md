@@ -501,7 +501,7 @@
 - **Worktree:** wt-m08-budget
 - **web:** ✅ Budget main view (home screen after login), month navigator, "Dinero a Asignar" KPI, category table (Asignado / Actividad / Disponible), inline assign editing, budget template (apply + save), trends panel (side panel per category — 6-month chart)
 - **db:** ✅ GET /api/budget/month (full month data + Disponible + Dinero a Asignar); POST /api/budget/allocations (upsert); GET|PUT /api/budget/template; POST /api/budget/template/apply; GET /api/budget/trends/[categoryId]
-- **Tests:** ✅ 54 unit tests (computeDisponibles × 6, sumReservedDisponible × 5, computeReadyToAssign × 4, getPrevMonth × 2, monthEnd × 4, monthRange × 6 incl. the −101 overspend regression, sumOnBudgetDebt × 8 + KPI regression × 3 in `accounts.test.ts`, computeCcPaymentActivity × 14 + card-debt invariant × 2 in `credit-cards.test.ts`, added 2026-07-26) — `computeDineroAAsignar`'s 4 tests replaced 2026-07-11 along with the function itself
+- **Tests:** ✅ 61 unit tests (computeDisponibles × 6, sumReservedDisponible × 5, computeReadyToAssign × 4, getPrevMonth × 2, monthEnd × 4, monthRange × 6 incl. the −101 overspend regression, `accounts.test.ts`: sumOnBudgetDebt × 8 + card-debt KPI regression × 3 + cash-outside-primary KPI regression × 4 + liquidity line × 3 (2026-08-02), computeCcPaymentActivity × 14 + card-debt invariant × 2 in `credit-cards.test.ts`, added 2026-07-26) — `computeDineroAAsignar`'s 4 tests replaced 2026-07-11 along with the function itself
 - **Migrations:** — (schema in M00; `budget_template` JSONB in `user_settings`)
 
 #### AI Notes
@@ -517,18 +517,28 @@
 > scoped to `earliestMonth` like the activity query, since `budget_months` rows (and thus
 > `earliestMonth`) are created lazily and can postdate account creation. See
 > `docs/CONVENTIONS.md` 2026-07-11 entries for the full derivation, the CC-mirror double-count
-> bug caught in review, and the new category-archive guard this required. `primaryAccountAvailable`
+> bug caught in review, and the new category-archive guard this required. ~~`primaryAccountAvailable`
 > (`/accounts`' "Disponible para ahorrar/invertir") uses the same `reservedDisponible` against the
-> primary account's own balance instead of the total.
+> primary account's own balance instead of the total.~~ — **removed 2026-08-02, see below**
 >
-> **`primaryAccountAvailable` base corrected (2026-07-26):** the primary account's balance alone
-> was **not** a valid base for that shared `reservedDisponible` subtrahend. `reservedDisponible`
-> omits the CC "Pago · X" mirrors on the grounds that card debt is already netted into
-> `totalOnBudgetBalance` — true globally, false for a primary-only base, where a $10 card expense
-> made the KPI go *up* by 10 (less reserved in the spent category, no offsetting debt term).
-> `sumOnBudgetDebt(accounts, primaryAccountId)` (`src/lib/zbb/accounts.ts`) now adds the negative
-> signed balances of the other on-budget accounts back into that base. `dineroAAsignar` unaffected;
-> category-level Disponible unaffected. See `docs/CONVENTIONS.md` 2026-07-26.
+> ~~**`primaryAccountAvailable` base corrected (2026-07-26):**~~ — **superseded 2026-08-02.** A $10
+> card expense made the KPI go *up* by 10, and `sumOnBudgetDebt(accounts, primaryAccountId)`
+> (`src/lib/zbb/accounts.ts`) was added to net the other on-budget accounts' negative signed
+> balances back into the primary-only base. A correct patch to a premise that was itself wrong —
+> see the next note. The function survives; only its role changed.
+>
+> **`primaryAccountAvailable` deleted; the KPI is now `dineroAAsignar` (2026-08-02):**
+> user-reported −260.87 with 721.79 in the primary account. The base was the primary balance alone
+> while the subtrahend covered **every** on-budget account's categories, so on-budget cash held
+> outside the primary account was subtracted without ever being added — the figure under-reported
+> by `Σ(positive signed balances of non-primary on-budget accounts)`. The 2026-07-26 fix had netted
+> non-primary *debt* into the base but not non-budget *cash*; that asymmetry was the bug. Masked
+> until now because phantom transfer spending (repaired by `20260727000001`) had held
+> `reservedDisponible` at 0. `BudgetMonthData.primaryAccountAvailable` and its computation are
+> gone; `/accounts` reads `dineroAAsignar` and renders a **liquidity line** beside it
+> (`primaryBalance + sumOnBudgetDebt(...)`, client-side from `/api/accounts`) saying how much of
+> that money is reachable from the primary account today. Reinstates the 2026-07-09 decision.
+> See `docs/CONVENTIONS.md` 2026-08-02.
 >
 > **CC "Pago · X" activity now tracks the card's real balance (2026-07-26):** extracted from the
 > inline `ccAcctMap` into `computeCcPaymentActivity` (`src/lib/zbb/credit-cards.ts`). The invariant
@@ -771,4 +781,4 @@
 | `20260709000002_account_primary_flag.sql` | is_primary flag on accounts (GitHub #16) | main session | ✅ applied (2026-07-09) |
 | `20260710000001_remove_cc_mirror_transactions.sql` | deletes historical CC "Pago · X" mirror transactions (balance-inflation bug fix) | main session | ✅ applied (2026-07-10) |
 | `20260727000001_strip_category_from_onbudget_transfers.sql` | data repair: clears the category on transfers between two on-budget accounts (phantom-spending / inflated "Dinero a Asignar" bug) | main session | ✅ applied (2026-07-27) |
-| `20260727000002_handle_new_user_trigger.sql` | attaches `handle_new_user()` as a real trigger on `auth.users` (the "Database Webhook" step was never possible), makes it idempotent, backfills existing users | main session | ⏳ PENDING |
+| `20260727000002_handle_new_user_trigger.sql` | attaches `handle_new_user()` as a real trigger on `auth.users` (the "Database Webhook" step was never possible), makes it idempotent, backfills existing users | main session | ✅ applied (2026-08-02) |
