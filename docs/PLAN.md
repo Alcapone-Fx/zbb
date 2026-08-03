@@ -312,7 +312,7 @@
 - **web:** ✅ Quick Add form (FAB), transaction history view grouped by category, filters (date range / category / type / tags / account), edit transaction sheet, delete transaction (with transfer-pair handling), CSV export, payee autocomplete
 - **db:** ✅ Route Handlers: GET+POST `/api/transactions`, PATCH+DELETE `/api/transactions/[id]`, GET `/api/transactions/export`, GET `/api/transactions/payees`; transfer pair creation/sync/deletion logic. CC mirror transaction logic **removed 2026-07-10** — see AI Notes below.
 - **Tests:** ✅ 7 unit tests (`applyAmountSign` × 4, `transferLegAmounts` × 3) — `ccMirrorAmount` and its 3 tests removed 2026-07-10 along with the mirror-creation code. Vitest v4 blocked by Windows Application Control policy (native rolldown binary); tests authored and verified by type-check + build
-- **Migrations:** ✅ applied (2026-07-10) — `supabase/migrations/20260710000001_remove_cc_mirror_transactions.sql` (data repair, deletes historical mirror rows; schema itself is in M00)
+- **Migrations:** ✅ applied (2026-07-10) — `supabase/migrations/20260710000001_remove_cc_mirror_transactions.sql` (data repair, deletes historical mirror rows; schema itself is in M00); ⏳ pending — `supabase/migrations/20260802000001_remove_retroactive_cc_mirror_transactions.sql` (the 2026-07-10 memo `LIKE` missed every backfilled row — see AI Notes)
 
 #### AI Notes
 > **CC mirror transaction removed (2026-07-10, user-reported bug):** The original design (below, kept for
@@ -348,6 +348,17 @@
 > already-stored synthetic mirror rows precisely — `type='adjustment' AND account_id = (that row's own
 > category's linked_account_id)` plus the exact auto-generated memo prefix as a second guard — so it can
 > never delete a real transaction that merely shares the "Pago · X" category on a different account.
+>
+> **That cleanup only ran on half the rows (found 2026-08-02).** The "exact memo prefix" guard is
+> `memo LIKE 'Pago tarjeta (automático) —%'`, but `20260705000002_backfill_cc_payment_categories.sql:61`
+> writes `'Pago tarjeta (automático, retroactivo) — …'` — the inserted `, retroactivo` sits before the em
+> dash, so the pattern never matched a single backfilled row. Since migrations run in order, every database
+> that already held credit-card expenses when the backfill ran kept its mirror rows. Cosmetic only —
+> `sumBalancesByAccount` skips them, so no balance or KPI was ever wrong — but they show in `/transactions`
+> with no counterpart on the real statement (observed: 4 rows, 400.46, on a card whose true balance is 0.00).
+> `20260802000001_remove_retroactive_cc_mirror_transactions.sql` (⏳ pending) repeats the same structural
+> guard with `LIKE 'Pago tarjeta (automático%'` so both variants match and a future memo tweak cannot
+> reopen the hole. Nothing creates new rows either way — the mirror-writing code was deleted 2026-07-10.
 >
 > ---
 >
@@ -782,3 +793,4 @@
 | `20260710000001_remove_cc_mirror_transactions.sql` | deletes historical CC "Pago · X" mirror transactions (balance-inflation bug fix) | main session | ✅ applied (2026-07-10) |
 | `20260727000001_strip_category_from_onbudget_transfers.sql` | data repair: clears the category on transfers between two on-budget accounts (phantom-spending / inflated "Dinero a Asignar" bug) | main session | ✅ applied (2026-07-27) |
 | `20260727000002_handle_new_user_trigger.sql` | attaches `handle_new_user()` as a real trigger on `auth.users` (the "Database Webhook" step was never possible), makes it idempotent, backfills existing users | main session | ✅ applied (2026-08-02) |
+| `20260802000001_remove_retroactive_cc_mirror_transactions.sql` | finishes `20260710000001`: its memo `LIKE` missed every row the `20260705000002` backfill created (`, retroactivo` before the em dash), so those mirror rows survived | main session | ⏳ PENDING |
