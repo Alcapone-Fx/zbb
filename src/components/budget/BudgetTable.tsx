@@ -84,9 +84,14 @@ function BudgetRow({ cat, month, onEdit, onTrends }: BudgetRowProps) {
     }
   }
 
+  // Categories linked to a sinking fund grow their Disponible on purpose —
+  // it's savings toward a known future expense, not free surplus. Using the
+  // usual surplus green here would read as "extra money to spend."
   const disponibleColor =
     cat.disponible > 0
-      ? 'var(--color-positive)'
+      ? cat.is_reserve_fund
+        ? 'var(--ac)'
+        : 'var(--color-positive)'
       : cat.disponible < 0
         ? 'var(--color-negative)'
         : 'var(--text-dim)'
@@ -183,12 +188,19 @@ function BudgetRow({ cat, month, onEdit, onTrends }: BudgetRowProps) {
       )}
 
       {/* Disponible */}
-      <p
-        className="text-right text-xs font-bold tabular-nums"
-        style={{ color: disponibleColor }}
-      >
-        <MaskedAmount value={formatCompact(cat.disponible)} />
-      </p>
+      <div className="text-right min-w-0">
+        <p className="text-xs font-bold tabular-nums" style={{ color: disponibleColor }}>
+          <MaskedAmount value={formatCompact(cat.disponible)} />
+        </p>
+        {cat.is_reserve_fund && cat.disponible > 0 && (
+          <p
+            className="text-[8px] font-semibold uppercase tracking-wide truncate"
+            style={{ color: 'var(--ac)' }}
+          >
+            Reservado
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -210,6 +222,13 @@ function BudgetGroup({ group, month, onEdit, onTrends }: BudgetGroupProps) {
   // positive) group total once other categories' Disponible offsets it —
   // flag it explicitly so it's visible without expanding every group.
   const hasOverspentCategory = group.categories.some((c) => c.disponible < 0)
+  // How much of the group total is savings held for a future known expense
+  // (sinking funds), not money free to reassign — annotates the total
+  // without changing it, so a group like "Ahorros/Inversión" doesn't read
+  // as a bigger surplus than it actually is.
+  const reservedInGroup = group.categories
+    .filter((c) => c.is_reserve_fund)
+    .reduce((s, c) => s + Math.max(c.disponible, 0), 0)
 
   return (
     <div>
@@ -248,18 +267,28 @@ function BudgetGroup({ group, month, onEdit, onTrends }: BudgetGroupProps) {
         >
           {totalActivity !== 0 ? <MaskedAmount value={formatExact(totalActivity)} /> : '—'}
         </span>
-        <span
-          className="text-right text-[11px] font-bold tabular-nums"
-          style={{
-            color:
-              totalDisponible > 0
-                ? 'var(--color-positive)'
-                : totalDisponible < 0
-                  ? 'var(--color-negative)'
-                  : 'var(--text-dim)',
-          }}
-        >
-          <MaskedAmount value={formatExact(totalDisponible)} />
+        <span className="text-right min-w-0">
+          <span
+            className="block text-[11px] font-bold tabular-nums"
+            style={{
+              color:
+                totalDisponible > 0
+                  ? 'var(--color-positive)'
+                  : totalDisponible < 0
+                    ? 'var(--color-negative)'
+                    : 'var(--text-dim)',
+            }}
+          >
+            <MaskedAmount value={formatExact(totalDisponible)} />
+          </span>
+          {reservedInGroup > 0 && (
+            <span
+              className="block text-[8px] font-semibold uppercase tracking-wide truncate"
+              style={{ color: 'var(--ac)' }}
+            >
+              Reservado
+            </span>
+          )}
         </span>
       </button>
 

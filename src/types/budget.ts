@@ -21,6 +21,7 @@ export interface BudgetCategoryRow {
   activity: number    // signed sum of tx amounts (negative = net spending)
   rollover: number    // last month's Disponible, carried in (0 in the first month)
   disponible: number  // assigned + rollover + activity
+  is_reserve_fund: boolean  // has a sinking fund group linked — Disponible is money saved toward a future expense, not free surplus
 }
 
 export interface BudgetGroupRow {

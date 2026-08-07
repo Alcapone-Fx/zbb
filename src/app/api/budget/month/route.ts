@@ -68,8 +68,8 @@ export async function GET(req: Request) {
   // over it, dropping its activity from every category's rollover.
   const sortedMonths = monthRange(earliestMonth, targetMonth)
 
-  // Parallel: groups+cats, on-budget accounts, allocations
-  const [groupsRes, catsRes, accountsRes, allocsRes] = await Promise.all([
+  // Parallel: groups+cats, on-budget accounts, allocations, reserve-fund links
+  const [groupsRes, catsRes, accountsRes, allocsRes, reserveFundsRes] = await Promise.all([
     supabase
       .from('category_groups')
       .select('id, name, is_system, is_archived, display_order, ideal_percentage')
@@ -96,10 +96,19 @@ export async function GET(req: Request) {
           .select('budget_month_id, category_id, assigned_amount')
           .in('budget_month_id', budgetMonthIds)
       : Promise.resolve({ data: [], error: null }),
+
+    supabase
+      .from('sinking_fund_groups')
+      .select('category_id')
+      .eq('user_id', user.id)
+      .not('category_id', 'is', null),
   ])
 
-  if (groupsRes.error || catsRes.error) {
-    console.error('GET /api/budget/month groups/cats error', groupsRes.error ?? catsRes.error)
+  if (groupsRes.error || catsRes.error || reserveFundsRes.error) {
+    console.error(
+      'GET /api/budget/month groups/cats/reserve-funds error',
+      groupsRes.error ?? catsRes.error ?? reserveFundsRes.error
+    )
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
@@ -114,6 +123,17 @@ export async function GET(req: Request) {
   // activity would be counted twice.
   const ccMirrorCategoryIds = new Set(
     allCats.filter((c) => c.linked_account_id).map((c) => c.id)
+  )
+
+  // Categories linked to a sinking fund group: their Disponible is money
+  // saved toward a known future expense, not free surplus — the UI dims the
+  // usual "surplus" green for these so a growing balance doesn't read as
+  // extra spendable money. Purely a display flag; it does not change
+  // computeDisponibles, sumReservedDisponible, or dineroAAsignar.
+  const reserveFundCategoryIds = new Set(
+    (reserveFundsRes.data ?? [])
+      .map((r) => r.category_id)
+      .filter((id): id is string => id !== null)
   )
 
   // Build allocations map: month -> catId -> assigned_amount
@@ -265,6 +285,7 @@ export async function GET(req: Request) {
       activity: targetActivities[cat.id] ?? 0,
       rollover: rollovers[cat.id] ?? 0,
       disponible: targetDisponibles[cat.id] ?? 0,
+      is_reserve_fund: reserveFundCategoryIds.has(cat.id),
     })
   }
 
