@@ -3,6 +3,7 @@ import {
   computeDisponibles,
   sumReservedDisponible,
   computeReadyToAssign,
+  sumReservedExcludingSinkingFunds,
   getPrevMonth,
   monthEnd,
   monthRange,
@@ -163,6 +164,44 @@ describe('computeReadyToAssign', () => {
 
   it('zero balance, zero reserved', () => {
     expect(computeReadyToAssign(0, 0)).toBe(0)
+  })
+})
+
+describe('sumReservedExcludingSinkingFunds', () => {
+  it('sums positive disponible across ordinary categories', () => {
+    const result = sumReservedExcludingSinkingFunds([
+      { disponible: 300, is_reserve_fund: false, is_system: false },
+      { disponible: 150, is_reserve_fund: false, is_system: false },
+    ])
+    expect(result).toBe(450)
+  })
+
+  it('excludes sinking funds — that money is earmarked for another account, not a near-term bill', () => {
+    const result = sumReservedExcludingSinkingFunds([
+      { disponible: 300, is_reserve_fund: false, is_system: false },
+      { disponible: 500, is_reserve_fund: true, is_system: false },
+    ])
+    expect(result).toBe(300)
+  })
+
+  it('excludes system (CC "Pago · X") categories', () => {
+    const result = sumReservedExcludingSinkingFunds([
+      { disponible: 300, is_reserve_fund: false, is_system: false },
+      { disponible: 50, is_reserve_fund: false, is_system: true },
+    ])
+    expect(result).toBe(300)
+  })
+
+  it('ignores negative disponible', () => {
+    const result = sumReservedExcludingSinkingFunds([
+      { disponible: 300, is_reserve_fund: false, is_system: false },
+      { disponible: -100, is_reserve_fund: false, is_system: false },
+    ])
+    expect(result).toBe(300)
+  })
+
+  it('returns 0 for no categories', () => {
+    expect(sumReservedExcludingSinkingFunds([])).toBe(0)
   })
 })
 

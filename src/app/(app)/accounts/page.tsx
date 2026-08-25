@@ -11,7 +11,9 @@ import { EditAccountModal } from "@/components/accounts/EditAccountModal";
 import { ReconciliationSheet } from "@/components/accounts/ReconciliationSheet";
 import { MaskedAmount } from "@/components/shared/MaskedAmount";
 import { signedAccountBalance, sumOnBudgetDebt } from "@/lib/zbb/accounts";
+import { sumReservedExcludingSinkingFunds } from "@/lib/zbb/budget";
 import { useRefreshStore } from "@/stores/refresh.store";
+import type { BudgetGroupRow } from "@/types/budget";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-419", {
@@ -47,6 +49,7 @@ export default function AccountsPage() {
   const transactionsVersion = useRefreshStore((s) => s.transactionsVersion);
   const [data, setData] = useState<AccountsResponse | null>(null);
   const [availableToSave, setAvailableToSave] = useState<number | null>(null);
+  const [budgetGroups, setBudgetGroups] = useState<BudgetGroupRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -72,6 +75,7 @@ export default function AccountsPage() {
       if (budgetRes.ok) {
         const budgetJson = await budgetRes.json();
         setAvailableToSave(budgetJson.data?.dineroAAsignar ?? null);
+        setBudgetGroups(budgetJson.data?.groups ?? []);
       }
     } catch {
       setApiError("Error de conexión");
@@ -103,13 +107,22 @@ export default function AccountsPage() {
   const stats = data ? computeMiniStats(data) : null;
   const primaryAccount = data?.on_budget.find((a) => a.is_primary) ?? null;
   // Liquidity qualifier for the KPI, computed here rather than in the API: the
-  // page already holds every on-budget balance, and the headline figure is
-  // global on purpose (see AvailableToSaveKPI's props). Cash reachable today =
-  // the primary account's own balance, less what the other on-budget accounts
-  // owe — that debt has to come out of this same cash.
+  // page already holds every on-budget balance and the budget groups (fetched
+  // for `dineroAAsignar`), and the headline figure is global on purpose (see
+  // AvailableToSaveKPI's props). Cash reachable today = the primary account's
+  // own balance, less what the other on-budget accounts owe (that debt has to
+  // come out of this same cash) and less what's already reserved for
+  // near-term bills (sinking funds excluded — see docs/CONVENTIONS.md
+  // 2026-08-25, that money is earmarked for a different account, not this
+  // one's near-term spending).
+  const reservedNearTerm = sumReservedExcludingSinkingFunds(
+    budgetGroups.flatMap((g) => g.categories)
+  );
   const liquidCash =
     data && primaryAccount
-      ? signedAccountBalance(primaryAccount) + sumOnBudgetDebt(data.on_budget, primaryAccount.id)
+      ? signedAccountBalance(primaryAccount) +
+        sumOnBudgetDebt(data.on_budget, primaryAccount.id) -
+        reservedNearTerm
       : null;
   const otherFundedAccounts =
     data && primaryAccount

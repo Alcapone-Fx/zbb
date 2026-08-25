@@ -11,14 +11,17 @@ interface Props {
   amount: number;
   /**
    * Cash actually reachable from the primary account right now: its balance
-   * net of what is owed on the other on-budget accounts. `null` when no
-   * account is marked primary.
+   * net of what is owed on the other on-budget accounts, and net of what's
+   * already reserved for near-term bills (sinking funds excluded — see
+   * sumReservedExcludingSinkingFunds). `null` when no account is marked
+   * primary.
    *
    * This does NOT feed `amount` — it qualifies it. `amount` answers "how much
-   * is unclaimed", this answers "how much of that can I move today". The two
-   * differ whenever on-budget money sits outside the primary account, which is
-   * exactly what a single primary-scoped figure got wrong (CONVENTIONS.md
-   * 2026-08-02).
+   * is unclaimed", this answers "how much of that can I actually move today
+   * without overdrawing my account". The two differ whenever on-budget money
+   * sits outside the primary account (CONVENTIONS.md 2026-08-02) or is
+   * already committed to a bill that hasn't been paid yet (CONVENTIONS.md
+   * 2026-08-25).
    */
   liquidCash: number | null;
   primaryAccountName: string | null;
@@ -88,7 +91,8 @@ export function AvailableToSaveKPI({
           ) : (
             <>
               ⚠ Solo <MaskedAmount value={formatCurrency(Math.max(0, liquidCash))} /> está en{" "}
-              <strong>{primaryAccountName}</strong>, ya descontando lo que debes en tarjetas
+              <strong>{primaryAccountName}</strong>, ya descontando lo que debes en tarjetas y lo
+              que ya tienes reservado para pagos pendientes
               {otherFundedAccounts.length > 0 && <> — el resto está en {joinNames(otherFundedAccounts)}</>}.
             </>
           )}

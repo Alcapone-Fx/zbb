@@ -75,6 +75,30 @@ export function computeReadyToAssign(totalBalance: number, reservedDisponible: n
   return totalBalance - reservedDisponible
 }
 
+/**
+ * Sum of reserved (positive Disponible) money in ordinary, near-term
+ * categories only — excludes sinking funds and CC "Pago · X" categories.
+ *
+ * Used only for the liquidity line under "Disponible para ahorrar/invertir"
+ * (`/accounts`): unlike the global `dineroAAsignar`, which deliberately never
+ * scopes to a single account (see docs/CONVENTIONS.md 2026-08-02), this feeds
+ * a *qualifier* on that headline — "how much of it can I actually move out of
+ * my primary account today without overdrawing it". A sinking fund's reserved
+ * money is excluded because it represents cash already earmarked for transfer
+ * to a separate account, not a near-term bill that will be paid out of the
+ * primary account (see docs/CONVENTIONS.md 2026-08-25). `is_system` excludes
+ * "Pago · X" categories the same way `ccMirrorCategoryIds` does for the
+ * global sum — every `is_system` category today is a CC mirror.
+ */
+export function sumReservedExcludingSinkingFunds(
+  categories: { disponible: number; is_reserve_fund: boolean; is_system: boolean }[]
+): number {
+  return categories.reduce((sum, c) => {
+    if (c.is_system || c.is_reserve_fund) return sum
+    return c.disponible > 0 ? sum + c.disponible : sum
+  }, 0)
+}
+
 /** Returns the YYYY-MM of the month before a given YYYY-MM. */
 export function getPrevMonth(month: string): string {
   const [y, m] = month.split('-').map(Number)
