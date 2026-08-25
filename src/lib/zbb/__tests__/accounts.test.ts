@@ -1,73 +1,65 @@
 import { describe, it, expect } from 'vitest'
-import { signedAccountBalance, sumOnBudgetDebt } from '../accounts'
+import { signedAccountBalance, sumOnBudgetSurplus } from '../accounts'
 import { computeReadyToAssign } from '../budget'
 import type { AccountWithBalance } from '@/types/account'
 
-describe('sumOnBudgetDebt', () => {
+describe('sumOnBudgetSurplus', () => {
   const primary = { id: 'checking', type: 'checking' as const, balance: 110 }
 
-  it('returns the card debt as a negative number', () => {
-    const result = sumOnBudgetDebt(
-      [primary, { id: 'visa', type: 'credit_card', balance: -10 }],
+  it('returns a secondary cash account balance as a positive number', () => {
+    const result = sumOnBudgetSurplus(
+      [primary, { id: 'savings', type: 'savings', balance: 200 }],
       'checking'
     )
-    expect(result).toBe(-10)
+    expect(result).toBe(200)
   })
 
-  it('never counts the excluded (primary) account, even when overdrawn', () => {
-    const result = sumOnBudgetDebt(
-      [{ id: 'checking', type: 'checking', balance: -40 }],
-      'checking'
-    )
-    expect(result).toBe(0)
-  })
-
-  it('ignores positive balances — an overpaid card is not cash in the primary account', () => {
-    const result = sumOnBudgetDebt(
-      [primary, { id: 'visa', type: 'credit_card', balance: 25 }],
+  it('never counts the excluded (primary) account, even when positive', () => {
+    const result = sumOnBudgetSurplus(
+      [{ id: 'checking', type: 'checking', balance: 40 }],
       'checking'
     )
     expect(result).toBe(0)
   })
 
-  it('adds up several cards', () => {
-    const result = sumOnBudgetDebt(
+  it('ignores negative balances — a card in debt is not cash held elsewhere', () => {
+    const result = sumOnBudgetSurplus(
+      [primary, { id: 'visa', type: 'credit_card', balance: -25 }],
+      'checking'
+    )
+    expect(result).toBe(0)
+  })
+
+  it('adds up several accounts', () => {
+    const result = sumOnBudgetSurplus(
       [
         primary,
-        { id: 'visa', type: 'credit_card', balance: -10 },
-        { id: 'amex', type: 'credit_card', balance: -35 },
+        { id: 'savings', type: 'savings', balance: 200 },
+        { id: 'cash', type: 'cash', balance: 35 },
       ],
       'checking'
     )
-    expect(result).toBe(-45)
+    expect(result).toBe(235)
   })
 
-  it('liability accounts store a positive amount owed and still count as debt', () => {
-    const result = sumOnBudgetDebt(
+  it('liability accounts store a positive amount owed and never count as surplus', () => {
+    const result = sumOnBudgetSurplus(
       [primary, { id: 'loan', type: 'liability', balance: 300 }],
       'checking'
     )
-    expect(result).toBe(-300)
-  })
-
-  it('counts an overdrawn secondary cash account', () => {
-    const result = sumOnBudgetDebt(
-      [primary, { id: 'checking-2', type: 'checking', balance: -5 }],
-      'checking'
-    )
-    expect(result).toBe(-5)
+    expect(result).toBe(0)
   })
 
   it('no primary marked yet — nothing is excluded', () => {
-    const result = sumOnBudgetDebt(
-      [{ id: 'visa', type: 'credit_card', balance: -10 }],
+    const result = sumOnBudgetSurplus(
+      [{ id: 'savings', type: 'savings', balance: 200 }],
       null
     )
-    expect(result).toBe(-10)
+    expect(result).toBe(200)
   })
 
   it('returns 0 for no accounts', () => {
-    expect(sumOnBudgetDebt([], 'checking')).toBe(0)
+    expect(sumOnBudgetSurplus([], 'checking')).toBe(0)
   })
 })
 
@@ -137,8 +129,15 @@ describe('"Disponible para ahorrar/invertir" — cash outside the primary accoun
   })
 
   it('the old primary-only base is what produced the negative reading', () => {
-    // Kept as the counter-example: same data, discarded formula.
-    const old = computeReadyToAssign(721.79 + sumOnBudgetDebt(accounts, 'nomina'), 982.66)
+    // Kept as the counter-example: same data, discarded formula. Debt-only
+    // sum inlined here (not `sumOnBudgetSurplus`, its opposite) since no
+    // production code needs this discarded shape any more.
+    const debtOutsidePrimary = accounts.reduce((sum, a) => {
+      if (a.id === 'nomina') return sum
+      const signed = signedAccountBalance(a)
+      return signed < 0 ? sum + signed : sum
+    }, 0)
+    const old = computeReadyToAssign(721.79 + debtOutsidePrimary, 982.66)
     expect(old).toBeCloseTo(-260.87, 2)
   })
 
@@ -157,28 +156,44 @@ describe('"Disponible para ahorrar/invertir" — cash outside the primary accoun
   })
 })
 
-describe('liquidity line — how much of it is reachable from the primary account', () => {
+describe('liquidity line — how much of the headline is reachable from the primary account', () => {
   const accounts: TestAccount[] = [
     { id: 'nomina', type: 'checking', balance: 721.79 },
     { id: 'prevision', type: 'savings', balance: 308.6 },
     { id: 'visa', type: 'credit_card', balance: -100 },
   ]
 
-  it('is the primary balance net of what the other accounts owe', () => {
-    expect(721.79 + sumOnBudgetDebt(accounts, 'nomina')).toBeCloseTo(621.79, 2)
+  // liquidCash = dineroAAsignar − sumOnBudgetSurplus(...) — see
+  // docs/CONVENTIONS.md 2026-08-25 for the algebraic derivation from
+  // `primaryBalance + (debt owed elsewhere) − reservedDisponible`.
+  function liquidCash(accts: TestAccount[], reserved: number, primaryId: string): number {
+    return availableToSave(accts, reserved) - sumOnBudgetSurplus(accts, primaryId)
+  }
+
+  it('equals the primary balance net of what the other accounts owe, when nothing is reserved', () => {
+    expect(liquidCash(accounts, 0, 'nomina')).toBeCloseTo(621.79, 2)
   })
 
-  it('covers the headline whenever the primary account holds enough', () => {
-    const headline = availableToSave(accounts, 900)
-    const liquid = 721.79 + sumOnBudgetDebt(accounts, 'nomina')
-    expect(headline).toBeCloseTo(30.39, 2)
-    expect(liquid).toBeGreaterThanOrEqual(headline)
+  it('covers the headline exactly when no cash sits outside the primary account', () => {
+    const single: TestAccount[] = [{ id: 'nomina', type: 'checking', balance: 200 }]
+    expect(liquidCash(single, 50, 'nomina')).toBeCloseTo(availableToSave(single, 50), 2)
   })
 
-  it('falls short when the free money sits in the other account', () => {
+  it('falls short of the headline when free money sits in another on-budget account', () => {
     const headline = availableToSave(accounts, 0)
-    const liquid = 721.79 + sumOnBudgetDebt(accounts, 'nomina')
+    const liquid = liquidCash(accounts, 0, 'nomina')
     expect(headline).toBeCloseTo(930.39, 2)
     expect(liquid).toBeLessThan(headline)
+  })
+
+  it('nets out a reserved bill that has not physically left the primary account yet', () => {
+    // User-reported (2026-08-25): assigning money to a category — sinking
+    // fund or ordinary bill alike — is bookkeeping, not a transfer. The cash
+    // stays put until an actual transaction moves it, so 200 reserved here
+    // must reduce what's liquid in "nomina" exactly like it reduces the
+    // headline — no exception for sinking-fund categories.
+    const before = liquidCash(accounts, 0, 'nomina')
+    const after = liquidCash(accounts, 200, 'nomina')
+    expect(after).toBeCloseTo(before - 200, 2)
   })
 })
