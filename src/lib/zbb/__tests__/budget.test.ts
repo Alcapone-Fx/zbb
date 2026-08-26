@@ -3,6 +3,8 @@ import {
   computeDisponibles,
   sumReservedDisponible,
   computeReadyToAssign,
+  sumReservedExcludingSinkingFunds,
+  sumSinkingFundShortfall,
   getPrevMonth,
   monthEnd,
   monthRange,
@@ -163,6 +165,115 @@ describe('computeReadyToAssign', () => {
 
   it('zero balance, zero reserved', () => {
     expect(computeReadyToAssign(0, 0)).toBe(0)
+  })
+})
+
+describe('sumReservedExcludingSinkingFunds', () => {
+  it('sums positive disponible across ordinary categories', () => {
+    const result = sumReservedExcludingSinkingFunds([
+      { disponible: 300, is_reserve_fund: false, is_system: false },
+      { disponible: 150, is_reserve_fund: false, is_system: false },
+    ])
+    expect(result).toBe(450)
+  })
+
+  it('excludes sinking funds — those go through sumSinkingFundShortfall instead', () => {
+    const result = sumReservedExcludingSinkingFunds([
+      { disponible: 300, is_reserve_fund: false, is_system: false },
+      { disponible: 500, is_reserve_fund: true, is_system: false },
+    ])
+    expect(result).toBe(300)
+  })
+
+  it('excludes system (CC "Pago · X") categories', () => {
+    const result = sumReservedExcludingSinkingFunds([
+      { disponible: 300, is_reserve_fund: false, is_system: false },
+      { disponible: 50, is_reserve_fund: false, is_system: true },
+    ])
+    expect(result).toBe(300)
+  })
+
+  it('ignores negative disponible', () => {
+    const result = sumReservedExcludingSinkingFunds([
+      { disponible: 300, is_reserve_fund: false, is_system: false },
+      { disponible: -100, is_reserve_fund: false, is_system: false },
+    ])
+    expect(result).toBe(300)
+  })
+
+  it('returns 0 for no categories', () => {
+    expect(sumReservedExcludingSinkingFunds([])).toBe(0)
+  })
+})
+
+describe('sumSinkingFundShortfall', () => {
+  it('is 0 when the source account already holds at least as much as is reserved', () => {
+    const result = sumSinkingFundShortfall(
+      [{ id: 'cat-a', disponible: 200 }],
+      [{ category_id: 'cat-a', source_account_id: 'acc-a' }],
+      { 'acc-a': 300 }
+    )
+    expect(result).toBe(0)
+  })
+
+  it('is the gap when the source account holds less than what is reserved', () => {
+    const result = sumSinkingFundShortfall(
+      [{ id: 'cat-a', disponible: 200 }],
+      [{ category_id: 'cat-a', source_account_id: 'acc-a' }],
+      { 'acc-a': 50 }
+    )
+    expect(result).toBe(150)
+  })
+
+  it('is the full reserved amount when the source account has nothing yet', () => {
+    const result = sumSinkingFundShortfall(
+      [{ id: 'cat-a', disponible: 200 }],
+      [{ category_id: 'cat-a', source_account_id: 'acc-a' }],
+      {}
+    )
+    expect(result).toBe(200)
+  })
+
+  it('aggregates reserved money by account before comparing, not per category', () => {
+    // Two funds sharing one destination account: judged independently
+    // against the same balance, each would look "covered" and produce 0.
+    const result = sumSinkingFundShortfall(
+      [
+        { id: 'cat-a', disponible: 400 },
+        { id: 'cat-b', disponible: 300 },
+      ],
+      [
+        { category_id: 'cat-a', source_account_id: 'shared' },
+        { category_id: 'cat-b', source_account_id: 'shared' },
+      ],
+      { shared: 500 }
+    )
+    expect(result).toBe(200)
+  })
+
+  it('ignores a category with no positive disponible', () => {
+    const result = sumSinkingFundShortfall(
+      [{ id: 'cat-a', disponible: -50 }],
+      [{ category_id: 'cat-a', source_account_id: 'acc-a' }],
+      {}
+    )
+    expect(result).toBe(0)
+  })
+
+  it('ignores a group with no category or no source account', () => {
+    const result = sumSinkingFundShortfall(
+      [{ id: 'cat-a', disponible: 200 }],
+      [
+        { category_id: null, source_account_id: 'acc-a' },
+        { category_id: 'cat-a', source_account_id: null },
+      ],
+      { 'acc-a': 0 }
+    )
+    expect(result).toBe(0)
+  })
+
+  it('returns 0 for no sinking fund groups', () => {
+    expect(sumSinkingFundShortfall([{ id: 'cat-a', disponible: 200 }], [], {})).toBe(0)
   })
 })
 

@@ -26,33 +26,35 @@ export function computeNetWorth(accounts: AccountWithBalance[]): number {
 }
 
 /**
- * Positive on-budget cash held outside `excludeAccountId`, as a POSITIVE
- * number (0 when there is none).
+ * Debt held in on-budget accounts other than `excludeAccountId`, as a
+ * NEGATIVE number (0 when there is none).
  *
  * Used only for the liquidity line under "Disponible para ahorrar/invertir"
- * (`/accounts`): `dineroAAsignar` is deliberately global (docs/CONVENTIONS.md
- * 2026-08-02), so any of it sitting in a non-primary on-budget account isn't
- * reachable from the primary account today — whether or not that money is
- * earmarked for something in particular. `dineroAAsignar − this` is the
- * liquidity figure: it's algebraically identical to `primaryBalance −
- * reservedDisponible + (debt owed by other on-budget accounts)`, but derived
- * from figures the page already has instead of needing the full category
- * breakdown. See docs/CONVENTIONS.md 2026-08-25 for the derivation — that
- * entry replaced an earlier version of this function (`sumOnBudgetDebt`,
- * summing only *negative* balances) once a specific case showed why
- * subtracting less than the full `reservedDisponible` isn't safe: money
- * assigned to a category doesn't leave the account it's sitting in until an
- * actual transfer/expense transaction is recorded, no matter which account
- * will eventually hold it.
+ * (`/accounts`), alongside `sumReservedExcludingSinkingFunds` and
+ * `sumSinkingFundShortfall` (`src/lib/zbb/budget.ts`) — together they answer
+ * "of the money that isn't reserved anywhere, how much is reachable from my
+ * primary account today". Whatever the other on-budget accounts owe has to
+ * be paid out of that same cash.
+ *
+ * It is deliberately NOT part of any budget total. Until 2026-08-02 the KPI
+ * itself was built on `primaryBalance + sumOnBudgetDebt(...)` as a base
+ * against the *global* reserved sum — a mix of scopes that under-reported by
+ * every peso of on-budget cash held outside the primary account. The
+ * headline is now the global figure; see docs/CONVENTIONS.md 2026-08-02.
+ *
+ * Only negative signed balances count: a positive credit card balance is an
+ * overpayment parked on the card, not cash available in the primary account.
+ * Positive balances of other cash accounts are surfaced separately (as "the
+ * rest is in X and Y"), never folded into this number.
  */
-export function sumOnBudgetSurplus(
+export function sumOnBudgetDebt(
   accounts: { id: string; type: AccountWithBalance['type']; balance: number }[],
   excludeAccountId: string | null
 ): number {
   return accounts.reduce((sum, a) => {
     if (a.id === excludeAccountId) return sum
     const signed = signedAccountBalance(a)
-    return signed > 0 ? sum + signed : sum
+    return signed < 0 ? sum + signed : sum
   }, 0)
 }
 

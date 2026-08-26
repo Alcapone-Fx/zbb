@@ -10,11 +10,14 @@ interface Props {
    */
   amount: number;
   /**
-   * Cash actually reachable from the primary account right now: `amount`
-   * (the global `dineroAAsignar`) minus whatever on-budget cash sits outside
-   * the primary account (`sumOnBudgetSurplus`) — see docs/CONVENTIONS.md
-   * 2026-08-25 for why this, and not just the other accounts' debt, is what
-   * makes the figure safe. `null` when no account is marked primary.
+   * Cash actually reachable from the primary account right now: its balance,
+   * net of what other on-budget accounts owe, net of ordinary reserved
+   * categories (assumed to sit in the primary account — no account
+   * attribution exists for those), and net of whatever part of a sinking
+   * fund's reserved money hasn't yet reached its own source account. `null`
+   * when no account is marked primary. See docs/CONVENTIONS.md 2026-08-25 for
+   * the two wrong attempts (over- and under-counting sinking funds) this
+   * replaced and the derivation of the final formula.
    *
    * This does NOT feed `amount` — it qualifies it. `amount` answers "how much
    * is unclaimed", this answers "how much of that can I actually move today
