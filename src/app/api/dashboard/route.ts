@@ -131,16 +131,25 @@ export async function GET(req: Request) {
     // otherwise inflate this KPI. See sumBalancesByAccount for the same
     // distinction applied to account balances.
     const isCcMirror = Boolean(tx.category_id && ccMirrorCategoryIds.has(tx.category_id))
+    // A transfer crossing the on-budget/off-budget boundary (e.g. funding a
+    // savings account) carries a category on its on-budget leg — see
+    // transferNeedsCategory — and already reduces that category's Disponible
+    // in /budget. Without this it silently disappeared from every KPI here,
+    // same class of bug as the adjustment case below.
+    const isCategorizedTransfer = tx.type === 'transfer' && Boolean(tx.category_id) && !isCcMirror
     const countsAsIncome =
       tx.type === 'income' ||
       tx.type === 'opening_balance' ||
-      (tx.type === 'adjustment' && amount > 0 && !isCcMirror)
+      (tx.type === 'adjustment' && amount > 0 && !isCcMirror) ||
+      (isCategorizedTransfer && amount > 0)
     // A reconciliation shortfall (negative adjustment) is real spending that
     // already reduced the account balance and, if categorized, already
     // reduces that category's Disponible in /budget — count it here too, or
     // Gastos/group breakdown would silently disagree with the budget page.
     const countsAsExpense =
-      tx.type === 'expense' || (tx.type === 'adjustment' && amount < 0 && !isCcMirror)
+      tx.type === 'expense' ||
+      (tx.type === 'adjustment' && amount < 0 && !isCcMirror) ||
+      (isCategorizedTransfer && amount < 0)
     if (countsAsIncome) {
       net_income += amount
     } else if (countsAsExpense) {

@@ -211,6 +211,20 @@ export async function POST(req: Request) {
       }
     }
 
+    // The category must live on whichever leg is on-budget — that's the leg
+    // /api/budget/month and /api/dashboard actually read (both filter to
+    // onBudgetIds). For on-budget → off-budget the source already is that
+    // leg. For off-budget → on-budget (e.g. withdrawing from savings) the
+    // *destination* is, even though the user picked the off-budget account
+    // as "origen" — otherwise the category sits on a leg neither route ever
+    // looks at and has no effect on Disponible or Ideal vs Real.
+    let sourceLegCategoryId = transferCategoryId
+    let destLegCategoryId: string | null = null
+    if (needsCategory && transferCategoryId && account.is_tracking_only) {
+      sourceLegCategoryId = null
+      destLegCategoryId = transferCategoryId
+    }
+
     const { sourceLegAmount, destLegAmount } = transferLegAmounts(
       amount,
       account.type as AccountType,
@@ -223,7 +237,7 @@ export async function POST(req: Request) {
       .insert({
         user_id: user.id,
         account_id,
-        category_id: transferCategoryId,
+        category_id: sourceLegCategoryId,
         amount: sourceLegAmount,
         date,
         type: 'transfer',
@@ -246,7 +260,7 @@ export async function POST(req: Request) {
       .insert({
         user_id: user.id,
         account_id: transfer_to_account_id,
-        category_id: null,
+        category_id: destLegCategoryId,
         amount: destLegAmount,
         date,
         type: 'transfer',
