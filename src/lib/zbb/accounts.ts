@@ -30,8 +30,8 @@ export function computeNetWorth(accounts: AccountWithBalance[]): number {
  * NEGATIVE number (0 when there is none).
  *
  * Used only for the liquidity line under "Disponible para ahorrar/invertir"
- * (`/accounts`), alongside `sumReservedExcludingSinkingFunds` and
- * `sumSinkingFundShortfall` (`src/lib/zbb/budget.ts`) — together they answer
+ * (`/accounts`), alongside `sumReservedInCategories`
+ * (`src/lib/zbb/budget.ts`) — together they answer
  * "of the money that isn't reserved anywhere, how much is reachable from my
  * primary account today". Whatever the other on-budget accounts owe has to
  * be paid out of that same cash.

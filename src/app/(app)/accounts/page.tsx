@@ -11,10 +11,9 @@ import { EditAccountModal } from "@/components/accounts/EditAccountModal";
 import { ReconciliationSheet } from "@/components/accounts/ReconciliationSheet";
 import { MaskedAmount } from "@/components/shared/MaskedAmount";
 import { signedAccountBalance, sumOnBudgetDebt } from "@/lib/zbb/accounts";
-import { sumReservedExcludingSinkingFunds, sumSinkingFundShortfall } from "@/lib/zbb/budget";
+import { sumReservedInCategories } from "@/lib/zbb/budget";
 import { useRefreshStore } from "@/stores/refresh.store";
 import type { BudgetGroupRow } from "@/types/budget";
-import type { SinkingFundGroup } from "@/types/helpers";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-419", {
@@ -51,7 +50,6 @@ export default function AccountsPage() {
   const [data, setData] = useState<AccountsResponse | null>(null);
   const [availableToSave, setAvailableToSave] = useState<number | null>(null);
   const [budgetGroups, setBudgetGroups] = useState<BudgetGroupRow[]>([]);
-  const [sinkingFundGroups, setSinkingFundGroups] = useState<SinkingFundGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -63,10 +61,9 @@ export default function AccountsPage() {
 
   const fetchAccounts = useCallback(async () => {
     try {
-      const [accountsRes, budgetRes, sinkingFundGroupsRes] = await Promise.all([
+      const [accountsRes, budgetRes] = await Promise.all([
         fetch("/api/accounts"),
         fetch(`/api/budget/month?month=${currentMonthStr()}`),
-        fetch("/api/helpers/sinking-fund-groups"),
       ]);
       const json = await accountsRes.json();
       if (!accountsRes.ok) {
@@ -79,10 +76,6 @@ export default function AccountsPage() {
         const budgetJson = await budgetRes.json();
         setAvailableToSave(budgetJson.data?.dineroAAsignar ?? null);
         setBudgetGroups(budgetJson.data?.groups ?? []);
-      }
-      if (sinkingFundGroupsRes.ok) {
-        const sinkingFundGroupsJson = await sinkingFundGroupsRes.json();
-        setSinkingFundGroups(sinkingFundGroupsJson.data ?? []);
       }
     } catch {
       setApiError("Error de conexión");
@@ -117,24 +110,15 @@ export default function AccountsPage() {
   // the headline (`availableToSave` = `dineroAAsignar`) is deliberately
   // global (see AvailableToSaveKPI's props). Cash reachable today = the
   // primary account's own balance, less what the other on-budget accounts
-  // owe, less what's reserved in ordinary categories (assumed to sit in the
-  // primary account — there's no account attribution for those), less
-  // whatever part of a sinking fund's reserved money hasn't actually reached
-  // its own source account yet (`sinking_fund_groups.source_account_id`).
-  // The part that HAS arrived there is excluded from this subtraction —
-  // otherwise it would be double-counted, since it's already excluded from
-  // "reachable" simply by sitting in a non-primary account. See
-  // docs/CONVENTIONS.md 2026-08-25 for the regression this fixes.
+  // owe, less what's reserved in categories (assumed to sit in the primary
+  // account — there's no account attribution for those). Sinking funds live in
+  // Off-Budget accounts, so they never enter this sum.
   const allCategories = budgetGroups.flatMap((g) => g.categories);
-  const accountBalanceById = Object.fromEntries(
-    (data?.on_budget ?? []).map((a) => [a.id, signedAccountBalance(a)])
-  );
   const liquidCash =
     data && primaryAccount
       ? signedAccountBalance(primaryAccount) +
         sumOnBudgetDebt(data.on_budget, primaryAccount.id) -
-        sumReservedExcludingSinkingFunds(allCategories) -
-        sumSinkingFundShortfall(allCategories, sinkingFundGroups, accountBalanceById)
+        sumReservedInCategories(allCategories)
       : null;
   const otherFundedAccounts =
     data && primaryAccount

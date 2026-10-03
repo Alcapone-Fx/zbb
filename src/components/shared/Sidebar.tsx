@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutGrid, Wallet, BarChart2, Sparkles, Settings2, LogOut } from "lucide-react";
+import { LayoutGrid, Wallet, BarChart2, PiggyBank, Sparkles, Settings2, LogOut } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/budget",    label: "Presupuesto", Icon: LayoutGrid },
   { href: "/accounts",  label: "Cuentas",     Icon: Wallet     },
   { href: "/dashboard", label: "Dashboard",   Icon: BarChart2  },
+  { href: "/previsiones", label: "Previsiones", Icon: PiggyBank },
   { href: "/helpers",   label: "Helpers",     Icon: Sparkles   },
   { href: "/settings",  label: "Configuración", Icon: Settings2 },
 ] as const;

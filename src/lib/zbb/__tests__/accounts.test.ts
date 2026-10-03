@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { signedAccountBalance, sumOnBudgetDebt } from '../accounts'
 import {
   computeReadyToAssign,
-  sumReservedExcludingSinkingFunds,
-  sumSinkingFundShortfall,
+  sumReservedInCategories,
 } from '../budget'
 import type { AccountWithBalance } from '@/types/account'
 
@@ -162,98 +161,38 @@ describe('"Disponible para ahorrar/invertir" — cash outside the primary accoun
 })
 
 describe('liquidity line — how much is reachable from the primary account', () => {
-  // liquidCash = primaryBalance + sumOnBudgetDebt(...) − reservedOrdinary −
-  // sinkingFundShortfall — see docs/CONVENTIONS.md 2026-08-25.
-  type TestCategory = { id: string; disponible: number; is_reserve_fund: boolean; is_system: boolean }
-  type TestGroup = { category_id: string | null; source_account_id: string | null }
+  // liquidCash = primaryBalance + sumOnBudgetDebt(...) − reservedInCategories.
+  // Sinking funds live in Off-Budget accounts, which never appear in the
+  // on-budget list nor reserve anything in a category.
+  type TestCategory = { disponible: number; is_system: boolean }
 
-  function liquidCash(
-    accts: TestAccount[],
-    cats: TestCategory[],
-    groups: TestGroup[],
-    primaryId: string
-  ): number {
+  function liquidCash(accts: TestAccount[], cats: TestCategory[], primaryId: string): number {
     const primary = accts.find((a) => a.id === primaryId)
     if (!primary) return 0
-    const balanceById = Object.fromEntries(accts.map((a) => [a.id, signedAccountBalance(a)]))
     return (
       signedAccountBalance(primary) +
       sumOnBudgetDebt(accts, primaryId) -
-      sumReservedExcludingSinkingFunds(cats) -
-      sumSinkingFundShortfall(cats, groups, balanceById)
+      sumReservedInCategories(cats)
     )
   }
 
-  it('nets card debt and ordinary reserved bills when a sinking fund is fully backed by its own account', () => {
+  it('nets card debt and reserved bills from the primary account cash', () => {
     const accounts: TestAccount[] = [
       { id: 'nomina', type: 'checking', balance: 721.79 },
-      { id: 'prevision', type: 'savings', balance: 308.6 },
       { id: 'visa', type: 'credit_card', balance: -100 },
     ]
-    const categories: TestCategory[] = [
-      { id: 'comida', disponible: 150, is_reserve_fund: false, is_system: false },
-      { id: 'prevision-cat', disponible: 200, is_reserve_fund: true, is_system: false },
-    ]
-    const groups: TestGroup[] = [{ category_id: 'prevision-cat', source_account_id: 'prevision' }]
-    // 721.79 cash − 100 owed on the card − 150 reserved for Comida = 471.79.
-    // The 200 reserved for the sinking fund is fully covered by "prevision"'s
-    // own 308.6 balance — shortfall 0, so it is not subtracted a second time.
-    expect(liquidCash(accounts, categories, groups, 'nomina')).toBeCloseTo(471.79, 2)
+    const categories: TestCategory[] = [{ disponible: 150, is_system: false }]
+    // 721.79 − 100 owed on the card − 150 reserved for Comida = 471.79.
+    expect(liquidCash(accounts, categories, 'nomina')).toBeCloseTo(471.79, 2)
   })
 
-  it('user-reported regression (2026-08-25): a well-funded sinking fund must not zero out liquidity', () => {
-    // Real numbers from the reported bug: primary 1095.14, 642.65 reserved in
-    // ordinary bill categories, 508.09 reserved for a sinking fund whose own
-    // account already holds 610.02 (over-funded, shortfall 0). The discarded
-    // formula (subtract the FULL 1307.39 reservedDisponible, then separately
-    // strip "prevision"'s balance from what's reachable) double-subtracted
-    // the sinking fund's money and produced a negative number the UI clamped
-    // to $0, even though the primary account plainly had cash free.
-    const accounts: TestAccount[] = [
-      { id: 'nomina', type: 'checking', balance: 1095.14 },
-      { id: 'prevision', type: 'savings', balance: 610.02 },
-    ]
-    const categories: TestCategory[] = [
-      { id: 'bills', disponible: 642.65, is_reserve_fund: false, is_system: false },
-      { id: 'prevision-cat', disponible: 508.09, is_reserve_fund: true, is_system: false },
-    ]
-    const groups: TestGroup[] = [{ category_id: 'prevision-cat', source_account_id: 'prevision' }]
-    const liquid = liquidCash(accounts, categories, groups, 'nomina')
+  it('an Off-Budget fund account does not affect liquidity', () => {
+    // "prevision" is Off-Budget, so the caller never passes it in the
+    // on-budget list; its balance cannot be double-subtracted.
+    const accounts: TestAccount[] = [{ id: 'nomina', type: 'checking', balance: 1095.14 }]
+    const categories: TestCategory[] = [{ disponible: 642.65, is_system: false }]
+    const liquid = liquidCash(accounts, categories, 'nomina')
     expect(liquid).toBeCloseTo(452.49, 2)
     expect(liquid).toBeGreaterThan(0)
-  })
-
-  it('a sinking fund that has not been funded yet reduces liquidity by the shortfall, not the full reserved amount', () => {
-    const accounts: TestAccount[] = [
-      { id: 'nomina', type: 'checking', balance: 1000 },
-      { id: 'prevision', type: 'savings', balance: 50 },
-    ]
-    const categories: TestCategory[] = [
-      { id: 'prevision-cat', disponible: 200, is_reserve_fund: true, is_system: false },
-    ]
-    const groups: TestGroup[] = [{ category_id: 'prevision-cat', source_account_id: 'prevision' }]
-    // Only 50 of the 200 reserved has actually arrived at "prevision" — the
-    // remaining 150 is still sitting in the primary account and must reduce
-    // its liquidity, not the full 200.
-    expect(liquidCash(accounts, categories, groups, 'nomina')).toBeCloseTo(850, 2)
-  })
-
-  it('two sinking funds sharing one destination account do not each get credit for the same cash', () => {
-    const accounts: TestAccount[] = [
-      { id: 'nomina', type: 'checking', balance: 1000 },
-      { id: 'savings', type: 'savings', balance: 500 },
-    ]
-    const categories: TestCategory[] = [
-      { id: 'goal-a', disponible: 400, is_reserve_fund: true, is_system: false },
-      { id: 'goal-b', disponible: 300, is_reserve_fund: true, is_system: false },
-    ]
-    const groups: TestGroup[] = [
-      { category_id: 'goal-a', source_account_id: 'savings' },
-      { category_id: 'goal-b', source_account_id: 'savings' },
-    ]
-    // Combined reserved = 700 against a 500 balance → shortfall 200. Judging
-    // each category independently against the same 500 would wrongly find
-    // both "covered" and produce a shortfall of 0.
-    expect(liquidCash(accounts, categories, groups, 'nomina')).toBeCloseTo(800, 2)
   })
 })

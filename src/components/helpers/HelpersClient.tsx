@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { GroceryCalculator } from './GroceryCalculator'
 import { RecurringBudgetPlanner } from './RecurringBudgetPlanner'
-import { SinkingFundsHelper } from './SinkingFundsHelper'
-import { EmergencyFundHelper } from './EmergencyFundHelper'
 import { WishlistHelper } from './WishlistHelper'
 import type { WishlistItem } from '@/types/helpers'
 
@@ -12,8 +11,6 @@ type HelperView =
   | 'hub'
   | 'grocery'
   | 'recurring-budget'
-  | 'sinking-funds'
-  | 'emergency-fund'
   | 'wishlist'
 
 interface HelperCard {
@@ -29,23 +26,6 @@ interface HelperSection {
 }
 
 const SECTIONS: HelperSection[] = [
-  {
-    title: 'Metas de Ahorro',
-    items: [
-      {
-        id: 'sinking-funds',
-        emoji: '🏦',
-        title: 'Fondos de Ahorro',
-        description: 'Calcula la aportación mensual para tus metas',
-      },
-      {
-        id: 'emergency-fund',
-        emoji: '🛡️',
-        title: 'Fondo de Emergencia',
-        description: 'Visualiza tus meses cubiertos por tiers',
-      },
-    ],
-  },
   {
     title: 'Calculadoras de Gasto Mensual',
     items: [
@@ -80,28 +60,18 @@ const HELPER_TITLES: Record<HelperView, string> = {
   hub: 'Helpers',
   grocery: 'Supermercado',
   'recurring-budget': 'Presupuesto Recurrente',
-  'sinking-funds': 'Fondos de Ahorro',
-  'emergency-fund': 'Fondo de Emergencia',
   wishlist: 'Lista de Deseos',
-}
-
-interface FundPrefill {
-  name: string
-  estimatedCost: number | null
-  wishlistItemId: string
 }
 
 export function HelpersClient() {
   const [view, setView] = useState<HelperView>('hub')
-  const [fundPrefill, setFundPrefill] = useState<FundPrefill | null>(null)
+  const router = useRouter()
 
+  // Funds live in /previsiones now; hand the wishlist item over via query params.
   function handleConvert(item: WishlistItem) {
-    setFundPrefill({
-      name: item.name,
-      estimatedCost: item.estimated_cost,
-      wishlistItemId: item.id,
-    })
-    setView('sinking-funds')
+    const params = new URLSearchParams({ wishlist: item.id, name: item.name })
+    if (item.estimated_cost != null) params.set('cost', String(item.estimated_cost))
+    router.push(`/previsiones?${params.toString()}`)
   }
 
   if (view !== 'hub') {
@@ -133,13 +103,6 @@ export function HelpersClient() {
         <div className="px-5 pb-24">
           {view === 'grocery' && <GroceryCalculator />}
           {view === 'recurring-budget' && <RecurringBudgetPlanner />}
-          {view === 'sinking-funds' && (
-            <SinkingFundsHelper
-              prefill={fundPrefill}
-              onPrefillConsumed={() => setFundPrefill(null)}
-            />
-          )}
-          {view === 'emergency-fund' && <EmergencyFundHelper />}
           {view === 'wishlist' && <WishlistHelper onConvert={handleConvert} />}
         </div>
       </div>

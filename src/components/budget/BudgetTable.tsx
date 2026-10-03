@@ -84,14 +84,9 @@ function BudgetRow({ cat, month, onEdit, onTrends }: BudgetRowProps) {
     }
   }
 
-  // Categories linked to a sinking fund grow their Disponible on purpose —
-  // it's savings toward a known future expense, not free surplus. Using the
-  // usual surplus green here would read as "extra money to spend."
   const disponibleColor =
     cat.disponible > 0
-      ? cat.is_reserve_fund
-        ? 'var(--ac)'
-        : 'var(--color-positive)'
+      ? 'var(--color-positive)'
       : cat.disponible < 0
         ? 'var(--color-negative)'
         : 'var(--text-dim)'
@@ -192,14 +187,6 @@ function BudgetRow({ cat, month, onEdit, onTrends }: BudgetRowProps) {
         <p className="text-xs font-bold tabular-nums" style={{ color: disponibleColor }}>
           <MaskedAmount value={formatCompact(cat.disponible)} />
         </p>
-        {cat.is_reserve_fund && cat.disponible > 0 && (
-          <p
-            className="text-[8px] font-semibold uppercase tracking-wide truncate"
-            style={{ color: 'var(--ac)' }}
-          >
-            Reservado
-          </p>
-        )}
       </div>
     </div>
   )
@@ -222,13 +209,6 @@ function BudgetGroup({ group, month, onEdit, onTrends }: BudgetGroupProps) {
   // positive) group total once other categories' Disponible offsets it —
   // flag it explicitly so it's visible without expanding every group.
   const hasOverspentCategory = group.categories.some((c) => c.disponible < 0)
-  // How much of the group total is savings held for a future known expense
-  // (sinking funds), not money free to reassign — annotates the total
-  // without changing it, so a group like "Ahorros/Inversión" doesn't read
-  // as a bigger surplus than it actually is.
-  const reservedInGroup = group.categories
-    .filter((c) => c.is_reserve_fund)
-    .reduce((s, c) => s + Math.max(c.disponible, 0), 0)
 
   return (
     <div>
@@ -281,14 +261,6 @@ function BudgetGroup({ group, month, onEdit, onTrends }: BudgetGroupProps) {
           >
             <MaskedAmount value={formatExact(totalDisponible)} />
           </span>
-          {reservedInGroup > 0 && (
-            <span
-              className="block text-[8px] font-semibold uppercase tracking-wide truncate"
-              style={{ color: 'var(--ac)' }}
-            >
-              Reservado
-            </span>
-          )}
         </span>
       </button>
 

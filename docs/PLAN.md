@@ -756,6 +756,8 @@
 > API: `src/app/api/helpers/sinking-funds/`, `src/app/api/helpers/wishlist/`, `src/app/api/helpers/emergency-fund/`, `src/app/api/user-settings/`
 > UI: `src/components/helpers/` (HelpersClient, GroceryCalculator, WeekendPlanner, SinkingFundsHelper, EmergencyFundHelper, WishlistHelper)
 > Page: `src/app/(app)/helpers/page.tsx`
+>
+> **2026-10-03 — Previsiones split out (branch `feat/previsiones`):** Sinking Funds and Emergency Fund moved from the Helpers hub to a new `/previsiones` tab (`src/components/previsiones/PrevisionesClient.tsx`, reusing `SinkingFundsHelper`/`EmergencyFundHelper`). "Apartar" → "Aportar" now creates a real transfer primary → group's Off-Budget account (+ assignment). Budget screen lost `is_reserve_fund`/"Reservado". **Data move ⏳ PENDING:** `supabase/oneoff/20261003_previsiones_a_off_budget.sql` (run A→B→C manually; B flips the two Previsión accounts to Off-Budget). See CONVENTIONS.md 2026-10-03.
 
 ---
 

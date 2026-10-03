@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Wallet, BarChart2, Sparkles, Settings2 } from "lucide-react";
+import { LayoutGrid, Wallet, BarChart2, PiggyBank, Sparkles, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/budget",    label: "Presupuesto", Icon: LayoutGrid },
   { href: "/accounts",  label: "Cuentas",     Icon: Wallet     },
   { href: "/dashboard", label: "Dashboard",   Icon: BarChart2  },
+  { href: "/previsiones", label: "Previsiones", Icon: PiggyBank },
   { href: "/helpers",   label: "Helpers",     Icon: Sparkles   },
   { href: "/settings",  label: "Config",      Icon: Settings2  },
 ] as const;

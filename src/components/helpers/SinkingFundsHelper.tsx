@@ -301,6 +301,8 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
   const [categories, setCategories] = useState<Category[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountBalances, setAccountBalances] = useState<Record<string, number>>({})
+  const [primaryAccountId, setPrimaryAccountId] = useState<string | null>(null)
+  const [offBudgetIds, setOffBudgetIds] = useState<Set<string>>(new Set())
   const [assignedByCategory, setAssignedByCategory] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)  // true = initial load in progress
   const [error, setError] = useState<string | null>(null)
@@ -406,6 +408,14 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
         const balances: Record<string, number> = {}
         for (const a of allAccounts) balances[a.id] = a.balance
         setAccountBalances(balances)
+        setPrimaryAccountId(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (accountsJson.on_budget ?? []).find((a: any) => a.is_primary)?.id ?? null
+        )
+        setOffBudgetIds(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          new Set((accountsJson.off_budget ?? []).map((a: any) => a.id as string))
+        )
 
         setLoading(false)
       })
@@ -694,26 +704,81 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
 
   // ── Group asignar ──────────────────────────────────────────────────────
 
-  async function handleAsignarGroup(group: SinkingFundGroup, totalMonthly: number) {
-    if (totalMonthly <= 0 || !group.category_id) return
-    const rounded = Math.round(totalMonthly * 100) / 100
-    setAsignarState((s) => ({ ...s, [group.id]: { saving: true, msg: null } }))
-    try {
-      const res = await fetch('/api/budget/allocations', {
+  /**
+   * Contributing = a real transfer on-budget → the group's off-budget account,
+   * filed under the group's category, plus the matching monthly assignment so
+   * the category nets to zero. Contributes whatever is still missing this month.
+   */
+  async function handleAportarGroup(group: SinkingFundGroup, remaining: number) {
+    if (remaining <= 0 || !group.category_id || !group.source_account_id) return
+    const amount = Math.round(remaining * 100) / 100
+    const setMsg = (saving: boolean, msg: string | null) =>
+      setAsignarState((s) => ({ ...s, [group.id]: { saving, msg } }))
+
+    if (!offBudgetIds.has(group.source_account_id)) {
+      setMsg(false, 'Error: el grupo necesita una cuenta Off-Budget para recibir el aporte')
+      return
+    }
+    if (!primaryAccountId) {
+      setMsg(false, 'Error: marca una cuenta principal en Cuentas para poder aportar')
+      return
+    }
+
+    setMsg(true, null)
+    const assignedBefore = assignedByCategory[group.category_id] ?? 0
+    const assignedAfter = Math.round((assignedBefore + amount) * 100) / 100
+    const postAllocation = (assigned: number) =>
+      fetch('/api/budget/allocations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category_id: group.category_id, month, assigned_amount: rounded }),
+        body: JSON.stringify({
+          category_id: group.category_id,
+          month,
+          assigned_amount: assigned,
+        }),
       })
-      const json = await res.json()
-      const msg = res.ok
-        ? `$${rounded.toFixed(2)} apartado para ahorro`
-        : (json.error ?? 'Error al asignar')
-      setAsignarState((s) => ({ ...s, [group.id]: { saving: false, msg } }))
-      if (res.ok) {
-        setAssignedByCategory((s) => ({ ...s, [group.category_id as string]: rounded }))
+
+    try {
+      const allocRes = await postAllocation(assignedAfter)
+      if (!allocRes.ok) {
+        const json = await allocRes.json().catch(() => ({}))
+        setMsg(false, json.error ?? 'Error al asignar')
+        return
       }
+
+      const txRes = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'transfer',
+          date: todayLocalDateString(),
+          account_id: primaryAccountId,
+          transfer_to_account_id: group.source_account_id,
+          category_id: group.category_id,
+          amount,
+          memo: `Aporte: ${group.name}`,
+        }),
+      })
+      if (!txRes.ok) {
+        // Roll the assignment back so the budget doesn't hold money that never moved.
+        const rollback = await postAllocation(assignedBefore).catch(() => null)
+        const json = await txRes.json().catch(() => ({}))
+        const base = json.error ?? 'Error al registrar la transferencia'
+        setMsg(
+          false,
+          rollback?.ok ? base : `${base}. Revisa la asignación de este mes en Presupuesto`
+        )
+        return
+      }
+
+      setAssignedByCategory((s) => ({ ...s, [group.category_id as string]: assignedAfter }))
+      setMsg(
+        false,
+        `$${amount.toFixed(2)} transferidos a ${group.source_account_name ?? 'la cuenta del grupo'}`
+      )
+      bumpTransactions()
     } catch {
-      setAsignarState((s) => ({ ...s, [group.id]: { saving: false, msg: 'Error de conexión' } }))
+      setMsg(false, 'Error de conexión')
     }
   }
 
@@ -1115,7 +1180,7 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
 
                 {(group.category_name || group.source_account_name) && (
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-sub)' }}>
-                    {group.category_name && `Cat: ${group.category_name}`}
+                    {group.category_name && `Línea en presupuesto: ${group.category_name}`}
                     {group.category_name && group.source_account_name && ' · '}
                     {group.source_account_name && `Cta: ${group.source_account_name}`}
                   </p>
@@ -1136,15 +1201,15 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
                               : { color: '#f59e0b', background: 'rgba(245,158,11,0.12)' }
                           }
                         >
-                          {isFullyAssigned ? '✓ Apartado este mes' : '⚠ Falta apartar'}
+                          {isFullyAssigned ? '✓ Aportado este mes' : '⚠ Falta aportar'}
                         </span>
                       )}
                     </div>
-                    {group.category_id && (
+                    {group.category_id && group.source_account_id && !isFullyAssigned && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleAsignarGroup(group, totalMonthly)
+                          handleAportarGroup(group, totalMonthly - assignedThisMonth)
                         }}
                         disabled={asState?.saving}
                         className="text-xs px-3 py-1 rounded-lg font-semibold disabled:opacity-40"
@@ -1152,14 +1217,14 @@ export function SinkingFundsHelper({ prefill, onPrefillConsumed }: Props = {}) {
                       >
                         {asState?.saving
                           ? '…'
-                          : `Apartar $${totalMonthly.toFixed(2)}`}
+                          : `Aportar $${Math.max(0, totalMonthly - assignedThisMonth).toFixed(2)}`}
                       </button>
                     )}
                   </div>
                 )}
                 {totalMonthly > 0 && (
                   <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-dim)' }}>
-                    Transferencia sugerida a tu cuenta de ahorro — no es un gasto de este mes.
+                    Se transfiere de tu cuenta principal a la cuenta Off-Budget de este grupo.
                   </p>
                 )}
 

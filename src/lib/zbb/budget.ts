@@ -76,77 +76,24 @@ export function computeReadyToAssign(totalBalance: number, reservedDisponible: n
 }
 
 /**
- * Sum of reserved (positive Disponible) money in ordinary categories only —
- * excludes sinking funds and CC "Pago · X" categories.
+ * Sum of reserved (positive Disponible) money across the budget's categories,
+ * excluding CC "Pago · X" categories (`is_system`).
  *
- * Used only for the liquidity line under "Disponible para ahorrar/invertir"
- * (`/accounts`), alongside `sumSinkingFundShortfall`: unlike the global
- * `dineroAAsignar` (deliberately never scoped to one account — see
- * docs/CONVENTIONS.md 2026-08-02), this feeds a qualifier — "how much of it
- * can I move out of my primary account today". There is no account
- * attribution for an ordinary category (`budget_allocations` has no
+ * Used for the liquidity line under "Disponible para ahorrar/invertir"
+ * (`/accounts`): how much of the primary account's cash is already spoken for.
+ * There is no account attribution for a category (`budget_allocations` has no
  * `account_id`), so its reserved money is assumed to sit wherever the user's
- * operating cash already is — the primary account. `is_system` excludes
- * "Pago · X" categories the same way `ccMirrorCategoryIds` does for the
- * global sum — every `is_system` category today is a CC mirror.
+ * operating cash already is — the primary account. Sinking funds need no
+ * special handling: they live in Off-Budget accounts, outside the budget
+ * balance, so none of their money is reserved here.
  */
-export function sumReservedExcludingSinkingFunds(
-  categories: { disponible: number; is_reserve_fund: boolean; is_system: boolean }[]
+export function sumReservedInCategories(
+  categories: { disponible: number; is_system: boolean }[]
 ): number {
   return categories.reduce((sum, c) => {
-    if (c.is_system || c.is_reserve_fund) return sum
+    if (c.is_system) return sum
     return c.disponible > 0 ? sum + c.disponible : sum
   }, 0)
-}
-
-/**
- * Money reserved for sinking-fund categories that hasn't actually reached its
- * destination account yet, summed across every sinking-fund source account.
- *
- * Assigning money to a sinking-fund category only records intent
- * (`budget_allocations.assigned_amount`) — it does not move cash. Unlike an
- * ordinary category, a sinking fund DOES carry account attribution
- * (`sinking_fund_groups.source_account_id`), so the portion of its Disponible
- * already covered by that account's real balance is verifiably elsewhere and
- * must NOT reduce primary-account liquidity — only counting it once (via the
- * account's own balance, already excluded by `sumOnBudgetDebt`/whatever else
- * nets non-primary balances out) would double-subtract it. Only the shortfall
- * (assigned more than has actually arrived) still needs to come from
- * wherever the user's operating cash is, presumed the primary account, same
- * as an ordinary category. See docs/CONVENTIONS.md 2026-08-25.
- *
- * Reserved money is summed BY ACCOUNT, not by category, before comparing
- * against that account's balance — two sinking funds sharing one destination
- * account must not each get "credit" for the same dollars sitting there. A
- * sinking-fund category with no resolvable group/account (shouldn't happen in
- * practice) is skipped here; callers that want a safe fallback should also
- * run it through `sumReservedExcludingSinkingFunds` with `is_reserve_fund`
- * left true only for categories actually covered by a group.
- */
-export function sumSinkingFundShortfall(
-  categories: { id: string; disponible: number }[],
-  sinkingFundGroups: { category_id: string | null; source_account_id: string | null }[],
-  accountBalanceById: Record<string, number>
-): number {
-  const disponibleByCategory = new Map(categories.map((c) => [c.id, c.disponible]))
-  const reservedByAccount = new Map<string, number>()
-
-  for (const group of sinkingFundGroups) {
-    if (!group.category_id || !group.source_account_id) continue
-    const disponible = disponibleByCategory.get(group.category_id)
-    if (disponible === undefined || disponible <= 0) continue
-    reservedByAccount.set(
-      group.source_account_id,
-      (reservedByAccount.get(group.source_account_id) ?? 0) + disponible
-    )
-  }
-
-  let shortfall = 0
-  for (const [accountId, reserved] of reservedByAccount) {
-    const balance = accountBalanceById[accountId] ?? 0
-    shortfall += Math.max(0, reserved - balance)
-  }
-  return shortfall
 }
 
 /** Returns the YYYY-MM of the month before a given YYYY-MM. */
