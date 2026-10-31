@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getPrevMonth, monthEnd } from '@/lib/zbb/budget'
+import { fetchBudgetedOffBudgetExpenses } from '@/lib/zbb/off-budget-expenses'
 import type { TrendsData, TrendMonth } from '@/types/budget'
 
 const uuidSchema = z.string().uuid()
@@ -103,8 +104,22 @@ export async function GET(
     if (month) assignedByMonth[month] = Number(row.assigned_amount)
   }
 
+  // Same rule as /api/budget/month: expenses paid from an Off-Budget account
+  // but filed under this category count toward its activity.
+  let offBudgetExpenses: Awaited<ReturnType<typeof fetchBudgetedOffBudgetExpenses>>
+  try {
+    offBudgetExpenses = await fetchBudgetedOffBudgetExpenses(supabase, user.id, {
+      dateFrom,
+      dateTo,
+      categoryId,
+    })
+  } catch (err) {
+    console.error('GET /api/budget/trends/[categoryId] off-budget expenses error', err)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+
   const activityByMonth: Record<string, number> = {}
-  for (const tx of txRes.data ?? []) {
+  for (const tx of [...(txRes.data ?? []), ...offBudgetExpenses]) {
     const month = (tx.date as string).slice(0, 7)
     activityByMonth[month] = (activityByMonth[month] ?? 0) + Number(tx.amount)
   }

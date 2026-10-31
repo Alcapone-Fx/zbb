@@ -367,21 +367,35 @@ export function QuickAddFormBody({ onClose }: Props) {
       )}
 
       {/* 4. Category — expense: required; income: optional label + not required; transfer: separate block */}
-      {type !== "transfer" && isOnBudget && (
+      {type !== "transfer" && (isOnBudget || type === "expense") && (
         <div className="flex flex-col gap-1.5">
           <label
             className="text-xs font-semibold uppercase tracking-wide"
             style={{ color: "var(--text-dim)" }}
           >
-            {type === "income" ? "Categoría (opcional)" : "Categoría"}
+            {type === "income" || !isOnBudget ? "Categoría (opcional)" : "Categoría"}
           </label>
           <AppSelect
             value={categoryId}
             onChange={setCategoryId}
-            placeholder={type === "income" ? "Dinero a Asignar" : "Seleccionar categoría"}
+            placeholder={
+              type === "income"
+                ? "Dinero a Asignar"
+                : isOnBudget
+                ? "Seleccionar categoría"
+                : "Sin categoría"
+            }
             sections={categorySections}
             searchable
           />
+          {/* Off-budget expense: the category is what makes the bill count. */}
+          {!isOnBudget && type === "expense" && (
+            <p className="text-xs" style={{ color: "var(--text-sub)" }}>
+              Si eliges una categoría, este gasto descuenta de ese sobre del
+              presupuesto y libera ese dinero en Dinero a Asignar. Sin categoría
+              no afecta el presupuesto.
+            </p>
+          )}
         </div>
       )}
 

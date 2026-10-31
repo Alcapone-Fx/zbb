@@ -40,6 +40,10 @@ export function EditTransactionSheet({ tx, groups, accounts, onClose, onSaved }:
     : undefined;
   const editableTransferCategory = !!currentCategory && !currentCategory.linked_account_id;
 
+  const offBudgetExpense =
+    tx.type === "expense" &&
+    !!accounts.find((a) => a.id === accountId)?.is_tracking_only;
+
   const userGroups = groups.filter((g) => !g.is_system);
   const categorySections = userGroups
     .map((g) => ({
@@ -260,6 +264,12 @@ export function EditTransactionSheet({ tx, groups, accounts, onClose, onSaved }:
                 sections={categorySections}
                 searchable
               />
+              {offBudgetExpense && (
+                <p className="text-xs" style={{ color: "var(--text-sub)" }}>
+                  Pagado desde una cuenta fuera del presupuesto: con categoría
+                  descuenta de ese sobre y libera ese dinero en Dinero a Asignar.
+                </p>
+              )}
             </div>
           )}
 

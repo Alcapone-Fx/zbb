@@ -11,6 +11,7 @@ import {
 } from '@/lib/zbb/budget'
 import { sumBalancesByAccount, signedAccountBalance } from '@/lib/zbb/accounts'
 import { computeCcPaymentActivity } from '@/lib/zbb/credit-cards'
+import { fetchBudgetedOffBudgetExpenses } from '@/lib/zbb/off-budget-expenses'
 import type { CcTransaction } from '@/lib/zbb/credit-cards'
 import type { BudgetMonthData, BudgetGroupRow, BudgetCategoryRow } from '@/types/budget'
 import type { AccountType } from '@/types/account'
@@ -170,7 +171,23 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 
-  const allTx = txQuery.data ?? []
+  // Expenses paid from an Off-Budget account but filed under a budget
+  // category. They reduce that category's Disponible (activity) yet are never
+  // part of the balance snapshot, so "Dinero a Asignar" rises by their amount.
+  // Previsiones (sinking-fund) and card-payment categories are excluded — see
+  // fetchExcludedOffBudgetCategoryIds.
+  let offBudgetExpenses: Awaited<ReturnType<typeof fetchBudgetedOffBudgetExpenses>>
+  try {
+    offBudgetExpenses = await fetchBudgetedOffBudgetExpenses(supabase, user.id, {
+      dateFrom,
+      dateTo,
+    })
+  } catch (err) {
+    console.error('GET /api/budget/month off-budget expenses error', err)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+
+  const allTx = [...(txQuery.data ?? []), ...offBudgetExpenses]
 
   // Build activity map: month -> catId -> signed sum (for disponible computation)
   const activitiesMap: Record<string, Record<string, number>> = {}

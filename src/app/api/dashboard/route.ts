@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { dashboardPeriodSchema } from '@/types/dashboard'
 import { computePeriodDateRange, computeIdealVsReal } from '@/lib/zbb/dashboard'
 import { computeNetWorth, sumBalancesByAccount } from '@/lib/zbb/accounts'
+import { fetchBudgetedOffBudgetExpenses } from '@/lib/zbb/off-budget-expenses'
 import type { AccountWithBalance } from '@/types/account'
 import type { DashboardData, GroupBreakdownRow } from '@/types/dashboard'
 
@@ -69,7 +70,24 @@ export async function GET(req: Request) {
   // Category IDs referenced by period transactions — only depends on txRes
   // (batch 1), so this lookup can run alongside the net-worth batch below
   // instead of waiting for it.
-  const periodTx = (txRes.data ?? []).filter((t) => onBudgetIds.has(t.account_id))
+  // Plus categorized expenses paid from an Off-Budget account: they already
+  // reduce that category's Disponible in /budget, so Gastos / group spending
+  // must include them or the two screens disagree. Previsiones and card
+  // payment categories are excluded inside the helper.
+  let offBudgetExpenses: Awaited<ReturnType<typeof fetchBudgetedOffBudgetExpenses>>
+  try {
+    offBudgetExpenses = await fetchBudgetedOffBudgetExpenses(supabase, user.id, {
+      dateFrom: from,
+      dateTo: to,
+    })
+  } catch (err) {
+    console.error('GET /api/dashboard off-budget expenses error', err)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+  const periodTx = [
+    ...(txRes.data ?? []).filter((t) => onBudgetIds.has(t.account_id)),
+    ...offBudgetExpenses,
+  ]
   const categoryIdsInTx = [...new Set(periodTx.filter((t) => t.category_id).map((t) => t.category_id as string))]
 
   // Net worth — real-time from all account balances (needs full tx history, not just period)
