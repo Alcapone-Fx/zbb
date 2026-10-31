@@ -78,10 +78,6 @@ export function ReconciliationSheet({ account, onClose, onDone }: Props) {
       setError("Ingresa un saldo bancario válido");
       return;
     }
-    if (needsAdjustment && isOnBudget && !categoryId) {
-      setError("Selecciona una categoría para el ajuste");
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -276,12 +272,12 @@ export function ReconciliationSheet({ account, onClose, onDone }: Props) {
                 className="text-xs font-bold uppercase tracking-widest"
                 style={{ color: "var(--text-dim)" }}
               >
-                Categoría del ajuste
+                Categoría del ajuste (opcional)
               </label>
               <AppSelect
                 value={categoryId}
                 onChange={setCategoryId}
-                placeholder="Seleccionar categoría"
+                placeholder="Dinero a Asignar"
                 options={userGroups.flatMap((g) =>
                   g.categories
                     .filter((c) => !c.is_system && !c.is_archived)

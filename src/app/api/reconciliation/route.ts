@@ -105,13 +105,9 @@ export async function POST(req: Request) {
   // Create adjustment transaction when there's a discrepancy
   let adjustment_transaction_id: string | null = null
   if (adjustment_amount !== 0) {
-    if (!account.is_tracking_only && !category_id) {
-      return NextResponse.json(
-        { error: 'La categoría es requerida para cuentas en presupuesto' },
-        { status: 400 }
-      )
-    }
-
+    // Category is optional. Uncategorized, the difference flows to "Dinero a
+    // Asignar" instead of being parked in an envelope where it would roll over
+    // month after month as phantom Disponible.
     const { data: adjTx, error: adjErr } = await supabase
       .from('transactions')
       .insert({

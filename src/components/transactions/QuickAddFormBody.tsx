@@ -393,7 +393,9 @@ export function QuickAddFormBody({ onClose }: Props) {
             className="text-xs font-semibold uppercase tracking-wide"
             style={{ color: "var(--text-dim)" }}
           >
-            Categoría
+            {selectedAccount?.is_tracking_only && !ccPaymentCategory
+              ? "Categoría (opcional)"
+              : "Categoría"}
           </label>
           {ccPaymentCategory ? (
             <div
@@ -410,7 +412,9 @@ export function QuickAddFormBody({ onClose }: Props) {
             <AppSelect
               value={categoryId}
               onChange={setCategoryId}
-              placeholder="Sin categoría"
+              placeholder={
+                selectedAccount?.is_tracking_only ? "Dinero a Asignar" : "Seleccionar categoría"
+              }
               options={userGroups.flatMap((g) =>
                 g.categories
                   .filter((c) => !c.is_system && !c.is_archived)

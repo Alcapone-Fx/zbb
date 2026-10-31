@@ -34,6 +34,12 @@ export function EditTransactionSheet({ tx, groups, accounts, onClose, onSaved }:
   const isTransfer = tx.type === "transfer";
   const isIncome = tx.type === "income";
 
+  // A card-payment "Pago · X" category is automatic and must stay as is.
+  const currentCategory = tx.category_id
+    ? groups.flatMap((g) => g.categories).find((c) => c.id === tx.category_id)
+    : undefined;
+  const editableTransferCategory = !!currentCategory && !currentCategory.linked_account_id;
+
   const userGroups = groups.filter((g) => !g.is_system);
   const categorySections = userGroups
     .map((g) => ({
@@ -251,6 +257,27 @@ export function EditTransactionSheet({ tx, groups, accounts, onClose, onSaved }:
                 value={categoryId}
                 onChange={setCategoryId}
                 placeholder="Sin categoría"
+                sections={categorySections}
+                searchable
+              />
+            </div>
+          )}
+
+          {/* Transfer category — only editable when the leg already carries one
+              (i.e. the on-budget leg of an on/off-budget transfer), so it can be
+              cleared to send the money to "Dinero a Asignar". */}
+          {isTransfer && editableTransferCategory && (
+            <div className="flex flex-col gap-1.5">
+              <label
+                className="text-xs font-bold uppercase tracking-widest"
+                style={{ color: "var(--text-dim)" }}
+              >
+                Categoría (opcional)
+              </label>
+              <AppSelect
+                value={categoryId}
+                onChange={setCategoryId}
+                placeholder="Dinero a Asignar"
                 sections={categorySections}
                 searchable
               />

@@ -175,9 +175,16 @@ export async function POST(req: Request) {
       destAccount.is_tracking_only
     )
 
-    if (needsCategory && !category_id) {
+    // Category is required only when money LEAVES the budget (on-budget →
+    // off-budget): that is real spending and must hit an envelope. Money
+    // ARRIVING from an off-budget account (e.g. savings paying a bill) may be
+    // uncategorized — it then lands in "Dinero a Asignar", exactly like
+    // uncategorized income. Forcing a category there credited the envelope and
+    // cancelled the very expense it was meant to cover.
+    const movesIntoBudget = account.is_tracking_only && !destAccount.is_tracking_only
+    if (needsCategory && !movesIntoBudget && !category_id) {
       return NextResponse.json(
-        { error: 'La categoría es requerida cuando solo una de las cuentas está en presupuesto' },
+        { error: 'La categoría es requerida cuando el dinero sale del presupuesto' },
         { status: 400 }
       )
     }

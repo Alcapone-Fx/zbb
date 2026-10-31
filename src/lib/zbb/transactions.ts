@@ -26,7 +26,10 @@ export function applyAmountSign(
  *
  * Money only enters or leaves the budget when EXACTLY ONE side is on-budget:
  *   - on-budget → off-budget: the money left the budget, which is real spending
- *   - off-budget → on-budget: money arriving, categorized so it lands somewhere
+ *   - off-budget → on-budget: money arriving. The category is OPTIONAL here:
+ *     uncategorized it lands in "Dinero a Asignar" (like uncategorized income);
+ *     categorized it credits that envelope — which cancels any expense already
+ *     recorded against it, so don't categorize it when the money is paying a bill
  *   - both on-budget:  the money only changed location; the budget is untouched
  *   - both off-budget: outside the budget entirely
  *
